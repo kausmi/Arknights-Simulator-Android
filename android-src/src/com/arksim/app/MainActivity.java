@@ -340,13 +340,20 @@ public class MainActivity extends Activity {
         /** 网页侧点「提取方舟资源」时调用；返回一句立即给用户看的话。 */
         @JavascriptInterface
         public String extractAssets() {
+            ShizukuBridge.Flavor f = ShizukuBridge.currentFlavor();
+            if (!f.usable) return f.label + " 暂时还用不了（目录结构还没适配），请切到简中官服或 B 服";
+            if (!ShizukuBridge.flavorInstalled(f)) return "没检测到" + f.label + "（" + f.pkg + "），请先安装并下载完资源";
             if (!ShizukuBridge.alive()) return "Shizuku 没有在运行，请先启动 Shizuku";
             if (!ShizukuBridge.granted()) {
                 ui.post(() -> ShizukuBridge.request(MainActivity.this));
                 return "请在弹出的对话框里允许本应用使用 Shizuku，然后重试";
             }
+            // 授权了但目录还是读不到：多半是资源没下完，或者选错了服
+            if (!ShizukuBridge.arkDirReadable()) {
+                return "读不到 " + f.label + " 的资源目录，确认游戏内已下载完整资源包";
+            }
             ui.post(() -> startExtraction(true));
-            return "已开始提取，进度显示在设置页";
+            return "已开始提取 " + f.label + " 的资源";
         }
 
         /** 提取是否已经有产物（manifest 存在即视为跑过）。 */
@@ -365,6 +372,19 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String shizukuStatus() {
             return ShizukuBridge.statusJson();
+        }
+
+        /** 各包体（官服 / B 服 / 其它语言服）的状态与当前选中项。 */
+        @JavascriptInterface
+        public String arkFlavors() {
+            return ShizukuBridge.flavorsJson();
+        }
+
+        /** 切换要读哪个包体（"cn" / "bilibili" / ...）。返回切换后的状态 JSON。 */
+        @JavascriptInterface
+        public String selectArkFlavor(String id) {
+            ShizukuBridge.setFlavorId(id == null ? "cn" : id);
+            return ShizukuBridge.flavorsJson();
         }
 
         /** 提取任务快照（网页轮询它画进度）。 */

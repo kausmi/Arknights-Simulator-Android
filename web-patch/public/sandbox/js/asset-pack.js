@@ -32,6 +32,7 @@ export function readAssetState() {
     installed: false, alive: false, granted: false, uid: -1, version: -1,
     arkReadable: false, ready: false, running: false, phase: 'IDLE',
     message: '', bytes: 0, tail: '', exit: -1,
+    flavors: [], currentFlavor: 'cn',
   };
   if (!hasShell()) return out;
   try {
@@ -41,6 +42,11 @@ export function readAssetState() {
       uid: Number(st.uid) || -1, version: Number(st.version) || -1,
       arkReadable: !!st.arkReadable,
     });
+  } catch { /* 保持默认 */ }
+  try {
+    const fl = JSON.parse(s.arkFlavors ? s.arkFlavors() : '{}');
+    out.flavors = Array.isArray(fl.flavors) ? fl.flavors : [];
+    out.currentFlavor = String(fl.current || 'cn');
   } catch { /* 保持默认 */ }
   try {
     const ex = JSON.parse(s.extractStatus() || '{}');
@@ -110,6 +116,7 @@ export function assetSectionHtml(st) {
       所以要借 <b>Shizuku</b> 拿到 shell 身份 —— 全程<b>只读</b>，不改动方舟的任何文件，
       提取出的图片也只写在本应用自己的目录里。
     </p>
+    ${flavorSelectHtml(st)}
     ${steps.length ? `<p class="settings__hint settings__assets-todo">还差一步：${steps.join(' ')}</p>` : ''}
     <div class="settings__assets-actions">
       <button type="button" class="menu__button menu__button--primary" data-asset-extract${disabled}>${btnLabel}</button>
@@ -120,6 +127,31 @@ export function assetSectionHtml(st) {
       没走通也不影响玩：只是官方美术改用替代素材，玩法与数值完全不受影响。
     </p>
   </section>`;
+}
+
+/** 包体切换：默认简中官服；B 服可用；其它语言服先列出但标「暂不可用」。 */
+function flavorSelectHtml(st) {
+  const list = st.flavors || [];
+  if (!list.length) return '';
+  const rows = list.map((f) => {
+    const on = f.id === st.currentFlavor;
+    let hint;
+    if (!f.usable) hint = '暂不可用';
+    else if (!f.installed) hint = '未安装';
+    else hint = '已安装';
+    const disabled = !f.usable || (f.id !== st.currentFlavor && !f.installed);
+    return `<button type="button" class="settings__flavor${on ? ' is-on' : ''}${f.usable ? '' : ' is-off'}"
+      data-flavor="${escapeHtml(f.id)}"${disabled ? ' disabled' : ''} aria-pressed="${on}">
+      <b>${escapeHtml(f.label)}</b>
+      <small>${escapeHtml(f.pkg)}</small>
+      <span class="settings__flavor-tag${f.usable ? '' : ' is-off'}">${escapeHtml(hint)}</span>
+    </button>`;
+  }).join('');
+  return `<div class="settings__flavors">
+    <p class="settings__hint">读取哪个客户端的资源：默认简中官服；装了 B 服也可以切过去读 B 服的文件。
+      其它语言服暂时用不了（目录结构与资源命名还没适配，先列在这里）。</p>
+    <div class="settings__flavor-list">${rows}</div>
+  </div>`;
 }
 
 function escapeHtml(s) {
@@ -164,6 +196,29 @@ export function wireAssetSection(dialog) {
       reply = `调用失败：${error.message}`;
     }
     if (status) status.textContent = reply || '已开始提取';
+    refresh();
+  });
+
+  // 包体切换：点了立刻写进壳，然后把整块重画一遍（当前项高亮与「已安装」都变了）
+  box.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-flavor]');
+    if (!f || f.disabled) return;
+    try {
+      shell().selectArkFlavor(f.dataset.flavor);
+    } catch (error) {
+      if (status) status.textContent = `切换失败：${error.message}`;
+      return;
+    }
+    // 重画整个资源区块：把新的状态塞回去，按钮、徽章、路径一次全更新
+    const host = box.parentElement;
+    if (host) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = assetSectionHtml(readAssetState());
+      const fresh = tmp.querySelector('.settings__assets');
+      if (fresh) box.replaceWith(fresh);
+    }
+    const ctl = dialog.querySelector('[role="status"]');
+    if (ctl) ctl.textContent = `已切换到 ${f.querySelector('b')?.textContent || f.dataset.flavor}`;
     refresh();
   });
 

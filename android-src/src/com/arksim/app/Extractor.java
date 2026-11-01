@@ -111,7 +111,7 @@ public final class Extractor {
         cmd.add(pyBin.getAbsolutePath());
         cmd.add(new File(ex, "extract.py").getAbsolutePath());
         cmd.add("--game");
-        cmd.add(ShizukuBridge.ARK_BUNDLES);
+        cmd.add(ShizukuBridge.arkBundles());
         cmd.add("--out");
         cmd.add(outDir.getAbsolutePath());
         cmd.add("--manifest");
@@ -164,7 +164,7 @@ public final class Extractor {
         String[] cmd = {
                 new File(py, "python3.14").getAbsolutePath(),
                 script.getAbsolutePath(),
-                "--game", ShizukuBridge.ARK_BUNDLES,
+                "--game", ShizukuBridge.arkBundles(),
                 "--out", indexFile.getAbsolutePath(),
                 "--skins", rosterDir.getAbsolutePath(),
         };

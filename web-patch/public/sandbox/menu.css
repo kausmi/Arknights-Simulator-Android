@@ -264,3 +264,29 @@
   .onboard__list { margin-bottom: 10px; gap: 3px; }
   .onboard__skip, .onboard__next, .onboard__done { padding: 7px 12px; font-size: 12px; }
 }
+
+/* ---- 设置 →「读取哪个客户端」（包体切换） --------------------------------------------------- */
+.settings__flavors { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+.settings__flavor-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
+.settings__flavor {
+  display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; text-align: left;
+  border: 1px solid #c4c2ac2a; border-radius: 6px; background: #141816; cursor: pointer;
+  color: #b9c0bb; font: 12px var(--font-cjk);
+}
+.settings__flavor b { color: #d0d2c7; font-size: 12.5px; font-weight: 600; }
+.settings__flavor small { color: #6f7a74; font: 10px var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings__flavor:hover:not(:disabled) { border-color: #4ed8af66; }
+.settings__flavor.is-on { border-color: #4ed8af; background: #4ed8af14; color: #9aead7; }
+.settings__flavor.is-on b { color: #b6ffe8; }
+.settings__flavor.is-off, .settings__flavor:disabled { opacity: .45; cursor: default; }
+.settings__flavor-tag {
+  align-self: flex-start; margin-top: 2px; padding: 0 5px; border-radius: 3px;
+  font: 10px/16px var(--font-mono); letter-spacing: .06em;
+  border: 1px solid #63d7bd77; color: #9aead7; background: #63d7bd14;
+}
+.settings__flavor-tag.is-off { border-color: #8a948f55; color: #8a948f; background: transparent; }
+
+@media (max-height: 620px) {
+  .settings__flavor-list { grid-template-columns: 1fr 1fr; }
+  .settings__flavor { padding: 5px 8px; }
+}
