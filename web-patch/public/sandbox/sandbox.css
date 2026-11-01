@@ -24,3 +24,13 @@
   color: #4de3b6; font: 10px/1 sans-serif; font-style: normal;
 }
 .pk__op { position: relative; }
+
+/* ---- 敌人面板：最下面那行专属信息（移速 / 重量 / 飞行 / 伤害类型 / 免疫） ------------- */
+.dt__enemyinfo {
+  display: flex; flex-wrap: wrap; gap: 4px 6px; padding: 4px 0 2px;
+}
+.dt__enemyinfo span {
+  padding: 1px 6px; border-radius: 3px;
+  border: 1px solid #e85a1a44; background: #e85a1a0f; color: #e8a887;
+  font: 10.5px/16px var(--font-cjk); letter-spacing: .02em;
+}

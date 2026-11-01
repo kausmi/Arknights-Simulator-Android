@@ -224,3 +224,10 @@
   vertical-align: middle; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .ops__field label { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+
+/* 改后值提示：紧跟在「原值」下面，金色小字 */
+.ops__now {
+  display: block; margin-top: 1px;
+  color: #ffc600; font: 10.5px/1.5 var(--font-mono); letter-spacing: .02em;
+}
+.ops__now:empty { display: none; }

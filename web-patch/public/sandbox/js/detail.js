@@ -100,6 +100,25 @@ function detailTabBody(u, tab, talents, skillInfo, traitDesc) {
  *   skill:{name,skillId,sp,cost,ready,active,left,dur,frac}|null, alt?:string,
  *   talents?:Array<{index,name,desc}>, skillInfo?:{name,desc}|null}} u
  */
+/**
+ * 敌人面板最下面那一行：面板里没有的敌人专属信息。
+ * 干员没有这些字段（移速 / 重量 / 飞行 / 伤害类型），所以只给敌人画。
+ */
+function enemyExtraRow(x) {
+  const items = [];
+  if (Number.isFinite(x.moveSpeed)) items.push(`移速 ${x.moveSpeed}`);
+  if (Number.isFinite(x.massLevel)) items.push(`重量 ${x.massLevel}`);
+  if (x.isFly) items.push('飞行');
+  const dmgCn = { phys: '物理', arts: '法术', true: '真实', none: '无' }[x.dmgType] || x.dmgType;
+  if (dmgCn) items.push(`${dmgCn}伤害`);
+  const imm = x.immunities || {};
+  const immCn = { stun: '眩晕', silence: '沉默', sleep: '睡眠', frozen: '冻结', levitate: '浮空' };
+  const immunes = Object.entries(imm).filter(([, v]) => v).map(([k]) => immCn[k] || k);
+  if (immunes.length) items.push(`免疫 ${immunes.join('/')}`);
+  if (!items.length) return '';
+  return `<div class="dt__enemyinfo">${items.map((t) => `<span>${esc(t)}</span>`).join('')}</div>`;
+}
+
 export function renderDetail(refs, u) {
   if (!u) {
     if (refs._detailUid != null) {
@@ -153,6 +172,7 @@ export function renderDetail(refs, u) {
       <span data-k="range-preview">${rangeDiagram(u.rangeGrid)}</span><small data-k="range-label">${u.rangeMode === 'skill' ? '技能范围' : '攻击范围'}</small>
     </${u.hand ? 'div' : 'button'}>
     <div class="dt__hp"><i data-k="hpfill"></i><span class="dt__hp-label">生命</span><b data-k="hptext"></b></div>
+    ${u.enemyExtra ? enemyExtraRow(u.enemyExtra) : ''}
     ${u.hand ? '' : `<div class="dt__basicbtns">
       <button class="dt__skill" data-act="unit-skill" title="${sk ? esc(sk.name) : '无技能'}">
         ${skIcon ? `<img src="${esc(skIcon)}" alt="" />` : `<i class="ph">S${(sk?.index ?? 0) + 1}</i>`}

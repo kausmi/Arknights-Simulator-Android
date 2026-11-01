@@ -598,10 +598,15 @@ function updateNow(cell, input, origin, v) {
     refreshAllNow();
     return;
   }
-  const potable = ['maxHp', 'atk', 'def'].includes(key);
+  // 模组属性（path 里带 modules.*.attr）与天赋/特性一样只是独立数值，不参与潜能折算
+  const isModuleAttr = input.dataset.kv.includes('.attr');
+  const potable = !isModuleAttr && ['maxHp', 'atk', 'def'].includes(key) && !input.dataset.kv.startsWith('modules.');
   if (potable && pot > 0) {
     const scaled = v * (1 + 0.02 * pot);
     nowEl.textContent = `改后 ${round2(v)} → ${pot}潜折算 ${round2(scaled)}`;
+  } else if (isModuleAttr) {
+    // 模组的加成是「叠在干员基础数值上」的，单独标出来更清楚
+    nowEl.textContent = `模组加成 ${round2(v)}`;
   } else {
     nowEl.textContent = `改后 ${round2(v)}`;
   }
