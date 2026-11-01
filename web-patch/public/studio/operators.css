@@ -1,0 +1,193 @@
+/* public/studio/operators.css — 干员数值编辑器（/studio/operators.html）。
+   走的是开始菜单那套深色终端底（menu.css），这里只排自己的部分。 */
+
+.ops-screen { overflow: auto; }
+
+.ops {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: calc(70px + var(--sa-t, 0px)) 28px calc(40px + var(--sa-b, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  z-index: 2;
+}
+
+.ops__head { display: flex; align-items: flex-start; gap: 20px; justify-content: space-between; flex-wrap: wrap; }
+.ops__head h1 { margin: 8px 0 6px; font-size: clamp(24px, 2.6vw, 38px); font-weight: 650; letter-spacing: .1em; }
+.ops__head h1 span { color: #edb563; }
+.ops__head p { margin: 0; color: #a0a69d; font-size: 13px; line-height: 1.7; max-width: 44em; }
+.ops__back { color: #d0d2c7; text-decoration: none; font-size: 13px; letter-spacing: .04em; padding: 8px 14px; border: 1px solid #c4c2ac33; border-radius: 8px; }
+.ops__back:hover { color: #9aead7; border-color: #9aead766; }
+
+.ops__bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ops__search {
+  flex: 1 1 260px; min-width: 200px; padding: 9px 13px; border-radius: 8px;
+  border: 1px solid #c4c2ac33; background: #141816; color: #f2f2f2;
+  font: 14px/1.4 var(--font-cjk);
+}
+.ops__search:focus { outline: none; border-color: #4ed8af88; }
+.ops__only { display: flex; align-items: center; gap: 6px; color: #a0a69d; font-size: 13px; }
+.ops__count { color: #8a948f; font-size: 12px; letter-spacing: .06em; }
+.ops__reset {
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid #e7311855; background: #2a1210; color: #ff8b78; font: 13px/1 var(--font-cjk);
+}
+.ops__reset:disabled { opacity: .35; cursor: default; }
+
+.ops__layout { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 18px; align-items: start; }
+@media (max-width: 860px) { .ops__layout { grid-template-columns: 1fr; } }
+
+.ops__list {
+  list-style: none; margin: 0; padding: 6px; max-height: 62vh; overflow: auto;
+  border: 1px solid #c4c2ac22; border-radius: 10px; background: #101413cc;
+}
+.ops__item {
+  width: 100%; display: flex; align-items: baseline; gap: 8px; padding: 7px 10px;
+  border-radius: 7px; cursor: pointer; border: 1px solid transparent;
+  background: none; color: #c3cbc7; font: 13px/1.5 var(--font-cjk); text-align: left;
+}
+.ops__item:hover { background: #4ed8af14; }
+.ops__item.is-on { background: #4ed8af22; border-color: #4ed8af88; color: #f2f2f2; }
+.ops__item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ops__item__meta { color: #6f7a74; font-size: 11px; letter-spacing: .04em; }
+/* 「已改过」标记：不可关闭，只要这份干员身上还留着改动就一直在 */
+.ops__flag {
+  color: #ffc600; font-size: 10px; letter-spacing: .08em;
+  border: 1px solid #ffc60066; border-radius: 4px; padding: 0 4px; line-height: 15px;
+}
+
+.ops__detail { border: 1px solid #c4c2ac22; border-radius: 10px; background: #101413cc; padding: 16px 18px; min-height: 220px; }
+.ops__hint { color: #6f7a74; font-size: 13px; }
+
+.ops__title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.ops__title h2 { margin: 0; font-size: 20px; color: #f2f2f2; letter-spacing: .05em; }
+.ops__title small { color: #6f7a74; font-size: 11px; letter-spacing: .05em; }
+.ops__prof { color: #9aead7; font-size: 12px; letter-spacing: .06em; }
+
+.ops__banner {
+  margin: 12px 0; padding: 9px 12px; border-radius: 8px; font-size: 13px;
+  border: 1px solid #ffc60066; background: #ffc60014; color: #ffd970;
+}
+.ops__banner ul { margin: 6px 0 0; padding-left: 18px; }
+.ops__banner li { line-height: 1.7; }
+.ops__banner b { color: #f2f2f2; font-weight: 600; }
+
+.ops__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 8px 14px; margin: 14px 0 0; }
+.ops__field { display: flex; flex-direction: column; gap: 3px; }
+.ops__field label { color: #8a948f; font-size: 11px; letter-spacing: .06em; }
+.ops__field .ops__origin { color: #5d6863; font-size: 10px; }
+.ops__field input {
+  width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #c4c2ac2a;
+  background: #161b19; color: #f2f2f2; font: 13px/1.4 var(--font-mono, monospace);
+}
+.ops__field input:focus { outline: none; border-color: #4ed8af88; }
+.ops__field input.is-changed { border-color: #ffc60099; background: #ffc60010; color: #ffd970; }
+
+.ops__actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.ops__actions button {
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font: 13px/1 var(--font-cjk);
+  border: 1px solid #c4c2ac33; background: #1c2220; color: #d0d2c7;
+}
+.ops__actions button.is-primary { border-color: #4ed8af88; background: #124639; color: #b6ffe8; }
+.ops__actions button:disabled { opacity: .35; cursor: default; }
+.ops__status { margin-left: auto; align-self: center; color: #8a948f; font-size: 12px; }
+.ops__status.is-bad { color: #ff8b78; }
+
+/* ---- 筛选与分块编辑（四类：基础数值 / 职业特性 / 天赋 / 模组） ------------------------------- */
+.ops__filter {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid #c4c2ac33;
+  background: #141816; color: #c3cbc7; font: 13px var(--font-cjk); cursor: pointer;
+}
+.ops__filter:focus { outline: none; border-color: #4ed8af88; }
+
+.ops__rarity { color: #ffc600; font-size: 12px; letter-spacing: 2px; }
+
+.ops__sec {
+  margin-top: 16px; border: 1px solid #c4c2ac1f; border-radius: 8px;
+  background: #0d1110; overflow: hidden;
+}
+.ops__sec-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: #161b19; border-bottom: 1px solid #c4c2ac18;
+}
+.ops__sec-head h3 { margin: 0; font-size: 13px; letter-spacing: .06em; color: #e9c77e; flex: 1; }
+.ops__mini {
+  padding: 4px 9px; border-radius: 6px; cursor: pointer;
+  border: 1px solid #c4c2ac33; background: #1c2220; color: #b9c0bb;
+  font: 11px var(--font-cjk); white-space: nowrap;
+}
+.ops__mini:hover { border-color: #d87178; color: #ff8b78; }
+.ops__sec > :not(.ops__sec-head) { padding: 10px 12px; }
+.ops__sec .ops__grid { padding: 10px 12px; margin: 0; }
+
+.ops__desc { margin: 0 0 8px; color: #8a948f; font-size: 12px; line-height: 1.75; }
+.ops__talent { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #c4c2ac14; }
+.ops__talent:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.ops__talent h4 { margin: 0 0 4px; font-size: 12px; color: #c3cbc7; letter-spacing: .04em; }
+.ops__sec h5 { margin: 12px 0 4px; font-size: 11.5px; color: #9aead7; letter-spacing: .06em; font-weight: 500; }
+
+.ops__module {
+  margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid #4ed8af26; background: #0f1513;
+}
+.ops__module:first-child { margin-top: 0; }
+.ops__module h4 { margin: 0 0 8px; font-size: 13px; color: #b6ffe8; letter-spacing: .04em; }
+.ops__modtag {
+  font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 3px;
+  border: 1px solid #ffc60066; color: #ffc600; margin-left: 4px;
+}
+
+.ops__banner-close {
+  margin-left: 8px; width: 18px; height: 18px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #ffc60055; border-radius: 50%; background: none;
+  color: #ffd970; font: 12px/1 sans-serif; cursor: pointer; vertical-align: middle;
+}
+.ops__banner-close:hover { background: #ffc60020; }
+
+/* 手机上：分块与字段单列，按钮放大 */
+@media (max-height: 620px), (max-width: 720px) {
+  .ops__filter, .ops__only { width: 100%; }
+  .ops__bar { gap: 6px; }
+  .ops__grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px 10px; }
+  .ops__sec-head { padding: 6px 10px; }
+  .ops__mini { font-size: 10px; padding: 3px 7px; }
+  .ops__actions button { width: 100%; }
+  .ops__actions { gap: 6px; }
+  .ops__status { width: 100%; margin-left: 0; text-align: center; }
+}
+
+/* ---- 自定义干员（实验功能） --------------------------------------------------------------- */
+.ops__custom {
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px dashed #4ed8af77; background: #12463a22; color: #9aead7;
+  font: 13px var(--font-cjk); white-space: nowrap;
+}
+.ops__custom:hover { border-color: #4ed8af; background: #12463a44; }
+
+.ops__custom-warn {
+  margin: 10px 12px; padding: 8px 12px; border-radius: 6px;
+  border-left: 2px solid #ffc600aa; background: #ffc6000e;
+  color: #e9c77e; font-size: 12px; line-height: 1.75;
+}
+.ops__custom-warn b { color: #ffc600; }
+
+.ops__custom-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ops__custom-list li {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border: 1px solid #c4c2ac22; border-radius: 6px; background: #101413cc;
+  font-size: 12.5px; color: #c3cbc7;
+}
+.ops__custom-list li b { flex: none; color: #f2f2f2; }
+.ops__custom-list li small { flex: 1; min-width: 0; color: #6f7a74; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#ops-custom-host { margin-bottom: 14px; }
+
+/* 手机上：自定义表单整体单列，按钮拉满 */
+@media (max-height: 620px), (max-width: 720px) {
+  .ops__custom { width: 100%; }
+  .ops__custom-list li { flex-wrap: wrap; }
+  .ops__custom-list li small { flex-basis: 100%; }
+}

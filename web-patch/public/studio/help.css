@@ -1,0 +1,66 @@
+/* public/studio/help.css — 教程与帮助页（/studio/help.html）。
+   沿用主菜单那套深色终端底（menu.css / menu-layout.css），这里只排自己的部分：
+   左目录 + 右正文，手机上目录改为横向可滑的一排。 */
+
+.help-screen { overflow: auto; }
+
+.help {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: calc(70px + var(--sa-t, 0px)) 28px calc(48px + var(--sa-b, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.help__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.help__head h1 { margin: 8px 0 6px; font-size: clamp(24px, 2.6vw, 38px); font-weight: 650; letter-spacing: .1em; }
+.help__head h1 span { color: #edb563; }
+.help__head p { margin: 0; max-width: 46em; color: #a0a69d; font-size: 13px; line-height: 1.8; }
+.help__back { color: #d0d2c7; text-decoration: none; font-size: 13px; letter-spacing: .04em; padding: 8px 14px; border: 1px solid #c4c2ac33; border-radius: 8px; white-space: nowrap; }
+.help__back:hover { color: #9aead7; border-color: #9aead766; }
+
+.help__toc { display: flex; flex-wrap: wrap; gap: 8px; }
+.help__toc a {
+  padding: 6px 12px; border-radius: 999px; border: 1px solid #c4c2ac2a;
+  color: #b9c0bb; font-size: 12px; letter-spacing: .04em; text-decoration: none;
+  background: #141816cc;
+}
+.help__toc a:hover { color: #9aead7; border-color: #9aead755; }
+.help__toc a.is-on { color: #0c1210; background: #4ed8af; border-color: #4ed8af; font-weight: 600; }
+
+.help__body { display: flex; flex-direction: column; gap: 18px; }
+.help__sec {
+  border: 1px solid #c4c2ac22; border-radius: 10px;
+  background: #101413cc; padding: 16px 20px;
+  scroll-margin-top: 20px;
+}
+.help__sec h2 {
+  margin: 0 0 6px; font-size: 17px; letter-spacing: .06em; color: #f2f2f2;
+  padding-bottom: 8px; border-bottom: 1px solid #c4c2ac18;
+}
+.help__intro { margin: 8px 0 10px; color: #a0a69d; font-size: 13px; line-height: 1.85; }
+.help__intro b { color: #ffc600; }
+.help__items { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.help__items > li { color: #c3cbc7; font-size: 13px; line-height: 1.85; }
+.help__items > li::marker { color: #4ed8af; }
+.help__items b { color: #ffc600; font-weight: 600; }
+.help__items ul { margin: 6px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+.help__items ul > li { color: #96a09b; font-size: 12px; line-height: 1.8; }
+.help__items ul > li::marker { color: #6f7a74; }
+.help__note { color: #6f7a74; font-size: 12px; }
+a.help-link { color: #9aead7; }
+
+/* 手机上：目录变成横向可滑的一排，正文单列 */
+@media (max-height: 620px), (max-width: 720px) {
+  .help { padding: calc(52px + var(--sa-t, 0px)) 14px calc(28px + var(--sa-b, 0px)); gap: 14px; }
+  .help__head h1 { font-size: 22px; }
+  .help__head p { font-size: 12px; }
+  .help__toc { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .help__toc a { flex: none; }
+  .help__sec { padding: 12px 14px; }
+  .help__sec h2 { font-size: 15px; }
+  .help__items > li { font-size: 12.5px; }
+}

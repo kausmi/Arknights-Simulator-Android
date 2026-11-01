@@ -1,0 +1,162 @@
+/* ==========================================================================================
+   mobile-fit.css — 手机 / 平板的操作适配层（Android 版专用补充）。
+
+   为什么单独一层：沙盒（sandbox.css 1900 行）和关卡编辑器（level.css）都是按桌面鼠标
+   设计的——侧栏常驻、控件小而密、悬停才出提示。手机上这些都用不了：
+     · 没有鼠标悬停，所有「hover 才显示」的信息必须变成常驻或点按展开
+     · 手指比指针粗，可点区域要放大到 44px 以上（--tap-min）
+     · 竖屏窄、横屏矮，侧栏要能收起，主区域要占满
+     · 滚动容器要能吃手指惯性，不能有 300ms 点击延迟或双击缩放
+
+   本文件只加「手机下怎么摆、怎么点」，不改任何业务逻辑、配色与文案。
+   加载顺序：必须排在 sandbox.css / level.css / game.css 之后。
+   ========================================================================================== */
+
+/* ---- A. 触摸设备通用：去掉悬停依赖、放大点击区 ------------------------------------------ */
+@media (pointer: coarse), (any-pointer: coarse) {
+  :root { --tap-min: 44px; }
+
+  /* 沙盒与编辑器里所有按钮、输入框的触控最小高度 */
+  :is(.sb, .lv, .studio) :is(button, .menu__button, .lv-btn, .op-button, select, input) {
+    min-height: 36px;
+    touch-action: manipulation;
+  }
+  :is(.sb, .lv, .studio) :is(button, .lv-btn, .op-button):not(:disabled) {
+    position: relative;
+  }
+  /* 图标类小按钮补一块透明热区（不改布局） */
+  :is(.sb, .lv) :is([class*="__icon"], [class*="__close"], [class*="__gear"], .fsbtn)::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--tap-min) - 100%) / -2) calc((var(--tap-min) - 100%) / -2);
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
+
+  /* 悬停才出现的提示，触摸下没有意义：直接常显或去掉对它的依赖 */
+  :is(.sb, .lv) [data-hover-only],
+  :is(.sb, .lv) .is-hover-only { display: none !important; }
+
+  /* 输入框字号 ≥16px，否则 iOS/部分 WebView 聚焦时会自动放大页面 */
+  :is(.sb, .lv, .studio) :is(input:not([type=range]), textarea, select) { font-size: max(16px, 1em); }
+
+  /* 列表/表格允许手指惯性滚动 */
+  :is(.sb, .lv) :is(.dr__list, .saves__list, .lv-list, .saves__detail, .dt__body, .panel__body) {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ---- B. 手机：沙盒（战场 HUD） ----------------------------------------------------------- */
+/* 特征：短边 ≤ 620px（横屏手机）或宽度 ≤ 520px（竖屏手机） */
+@media (max-height: 620px), (max-width: 520px) {
+  /* 顶栏一条：去掉多余的说明文字，只留操作 */
+  .sb .terminal-header,
+  body[data-terminal-mode='battle'] .terminal-header { min-height: 0; padding: 6px 10px 0; gap: 8px; }
+  .sb .terminal-header__end,
+  body[data-terminal-mode='battle'] .terminal-header__end { display: none; }
+
+  /* 右上工具区（1x / 设置 / 扣费 / 重置）：横排但收紧，避免盖住战场 */
+  .sb :is(.hud__tools, .gtop, .hud__topright) { gap: 4px; padding: 4px 6px; }
+  .sb :is(.hud__tools, .gtop) :is(button, .menu__button) { min-height: 30px; padding: 4px 8px; font-size: 11px; }
+
+  /* 左侧「敌人 / 地形」竖排：改成更窄的竖条 */
+  .sb .hud__rail,
+  .sb :is(.hud__left, .leftrail) { width: 52px; gap: 4px; padding: 4px; }
+  .sb .hud__rail :is(button, a) { padding: 6px 2px; font-size: 10px; flex-direction: column; gap: 2px; }
+
+  /* 伤害统计 / 详情面板：木有人悬停，默认收起，点按才展开 */
+  .sb :is(.hud__detail, .dt, .hud__score) { width: auto; max-width: 62vw; }
+
+  /* 手牌区：横屏手机上原本会压住 DP —— 收紧高度、允许横向滚动 */
+  .sb :is(.hud__hand, .shopbar, .hud__dock) {
+    max-width: 100vw;
+    padding-inline: 6px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sb .hud__hand .card,
+  .sb .hud__hand :is(.hcard, .handcard) { min-width: 84px; }
+
+  /* 底部的存档/快存条 */
+  .sb :is(.hud__foot, .hud__bottom) { padding: 4px 6px; gap: 6px; }
+}
+
+/* ---- C. 手机：关卡编辑器 ---------------------------------------------------------------- */
+@media (max-height: 620px), (max-width: 720px) {
+  /* 编辑器主区：左右两栏在手机上改成上下，侧栏可折叠 */
+  .lv .lv-body { padding: 8px 10px; gap: 8px; }
+  .lv :is(.lv-workspace, .lv-main) { grid-template-columns: 1fr !important; }
+
+  /* 侧栏（素材/敌人工厂）：默认折叠，点标签展开；展开时覆盖而不是挤压主区 */
+  .lv .lv-side,
+  .lv :is(.lv-library, .lv-panel) {
+    position: relative;
+    max-height: 42vh;
+    overflow: auto;
+    border-radius: 6px;
+  }
+
+  /* 时间轴：手机上一屏只显示几格，允许横向拖 */
+  .lv :is(.lv-tl-scroll, .lv-timeline) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .lv :is(.lv-tl-bar, .lv-tl-bulk) :is(.lv-btn) { padding: 4px 6px; font-size: 10px; }
+
+  /* 底部工具条：换行排列，按钮放大 */
+  .lv .lv-actions { flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .lv .lv-actions :is(.lv-btn, .op-button) { min-height: 34px; padding: 6px 10px; }
+
+  /* 编辑器顶部页签：横向可滚 */
+  .lv :is(.lv-side-tabs, .lv-tabs) { display: flex; overflow-x: auto; gap: 4px; }
+  .lv :is(.lv-side-tabs, .lv-tabs) > * { flex: none; min-height: 32px; }
+
+  /* 编辑器里的浮层提示（#lv-error 等）不要盖住操作 */
+  .lv #lv-error { top: 64px; left: 10px; right: 10px; font-size: 12px; }
+}
+
+/* ---- D. 平板（大屏但仍是触摸） --------------------------------------------------------- */
+@media (min-width: 900px) and (max-height: 1100px) and (pointer: coarse) {
+  /* 平板横向空间富余：编辑器保持双栏，但侧栏更宽一点更好点 */
+  .lv :is(.lv-workspace, .lv-main) { grid-template-columns: minmax(240px, 300px) 1fr; }
+  /* 沙盒的右侧详情卡在平板上可以常驻 */
+  .sb :is(.hud__detail, .dt) { max-width: 34vw; }
+}
+
+/* ---- E. 存档管理（沙盒入口 + 局内）：手机上单列 ------------------------------------------------- */
+@media (max-height: 620px), (max-width: 720px) {
+  .sandbox-archive { grid-template-columns: 1fr !important; }
+  .sandbox-archive__preview { min-height: 0; }
+  .sandbox-archive__preview img { max-height: 16vh; }
+  .saves__layout { grid-template-columns: 1fr !important; }
+  /* 十槽在手机上一列排开会很长：改成两列网格，滚动查看 */
+  .saves__list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-height: 44vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .saves__slot { min-height: 62px; padding: 6px 8px; }
+  .saves__number { font-size: 13px; }
+  .saves__slotbody b { font-size: 12px; }
+  .saves__slotbody small { font-size: 10px; }
+  .saves__slotbody time { font-size: 9px; }
+  /* 详情区按钮竖排更顺手 */
+  .saves__detail .menu__button,
+  .saves__action { width: 100%; margin: 2px 0; min-height: 36px; }
+  /* 对话框本身放宽到几乎全屏，手机上才有足够点按空间 */
+  .saves { width: min(96vw, 900px); max-height: 92dvh; }
+}
+
+/* ---- F. 竖屏手机：允许纵向滚动而不是把内容压扁 ------------------------------------------ */
+@media (max-width: 520px) and (min-height: 640px) {
+  .sb .hud__hand,
+  .sb .hud__dock { flex-wrap: wrap; }
+  .lv .lv-body { overflow-y: auto; }
+}

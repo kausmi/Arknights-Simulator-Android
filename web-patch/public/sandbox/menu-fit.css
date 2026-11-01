@@ -1,0 +1,130 @@
+/* ==========================================================================================
+   menu-fit.css — 手机横屏 / 平板等大屏的界面尺寸适配（本 Android 版专用补充层）。
+
+   为什么需要：菜单与干员页的字号是写死的 px（.menu-card__body strong 30px、正文 13px…），
+   那是给 1920×1080 桌面设计的。手机横屏时 CSS 视口可能只有 800×360，同样 30px 的字相当于
+   桌面上的三四倍，卡片挤成一列、纵向还被裁掉。平板又反过来——四张卡挤在中间显得很小。
+
+   策略：按「短边高度」分档，只调字号与卡片密度，不改结构、不改配色、不改文案，
+   观感仍然完全是原来那套终端风。
+
+     ① 手机横屏（短边 ≤ 620px）  紧凑档：字号降一档，卡片高度改由内容撑开，四卡两列两行
+     ② 常规（620 ～ 900px）      维持设计原样
+     ③ 平板 / 大屏（≥ 900px）    舒展档：字号提一档，卡片更宽更高，留白更多
+
+   本文件必须排在 menu-layout.css 之后加载，才能盖掉那边的固定值。
+   ========================================================================================== */
+
+/* ---- ① 手机横屏：紧凑档 ---------------------------------------------------------------- */
+@media (max-height: 620px) {
+  :root[data-menu-theme] body .menu__content {
+    padding: 56px 20px 22px;
+    min-height: auto;
+    justify-content: flex-start;
+  }
+  :root[data-menu-theme] body .menu__rail { top: 14px; left: 20px; right: 20px; font-size: 10px; }
+
+  /* 标题区收紧：手机上标题占一半高度最浪费 */
+  :root[data-menu-theme] body .menu__heading { margin-bottom: 14px; padding-right: 78px; }
+  :root[data-menu-theme] body .menu__heading h1 {
+    margin: 4px 0 2px;
+    font-size: calc(20px * var(--interface-text-scale, 1));
+    letter-spacing: .07em;
+  }
+  :root[data-menu-theme] body .menu__heading p { font-size: calc(11px * var(--interface-text-scale, 1)); }
+  :root[data-menu-theme] body .menu__eyebrow { font-size: 10px; letter-spacing: .16em; }
+  :root[data-menu-theme] body .menu__brand { width: 62px; height: 62px; }
+
+  /* 四卡：两列两行，高度由内容决定（原来写死的 435px 比整块屏幕还高） */
+  :root[data-menu-theme] body .menu__cards,
+  :root[data-menu-theme] body .menu__cards--four {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+  :root[data-menu-theme] body .menu__cards--four > .menu-card:nth-child(n),
+  :root[data-menu-theme] body .menu__cards > .menu-card:nth-child(n) { margin-top: 0; }
+
+  :root[data-menu-theme] body .menu-card {
+    min-height: 0;
+    padding: 12px 14px 0;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  }
+  :root[data-menu-theme] body .menu-card::after { top: 11px; right: 12px; font-size: 15px; }
+  :root[data-menu-theme] body .menu-card__top { padding-right: 16px; font-size: calc(9.5px * var(--interface-text-scale, 1)); }
+  :root[data-menu-theme] body .menu-card__art { height: 38px; margin: 4px 0; gap: 10px; }
+  :root[data-menu-theme] body .menu-card__art svg { width: 30px; height: 30px; }
+  :root[data-menu-theme] body .menu-card__art b { font-size: 34px; letter-spacing: -.03em; }
+  :root[data-menu-theme] body .menu-card__art::after { inset: 10px -14px 10px 58%; }
+  :root[data-menu-theme] body .menu-card__body { padding-bottom: 10px; gap: 4px; }
+  :root[data-menu-theme] body .menu-card__body strong {
+    font-size: calc(16px * var(--interface-text-scale, 1));
+    line-height: 1.25;
+    letter-spacing: .04em;
+  }
+  :root[data-menu-theme] body .menu-card__body > span {
+    font-size: calc(10.5px * var(--interface-text-scale, 1));
+    line-height: 1.5;
+  }
+  :root[data-menu-theme] body .menu-card__foot {
+    min-height: 0;
+    margin: auto -14px 0;
+    padding: 8px 14px;
+    font-size: calc(11px * var(--interface-text-scale, 1));
+  }
+  :root[data-menu-theme] body .menu-card__foot b { font-size: 16px; }
+  :root[data-menu-theme] body .menu__footer {
+    margin-top: 10px;
+    padding-top: 8px;
+    font-size: 9px;
+    letter-spacing: .1em;
+  }
+
+  /* 终端顶栏 / 底部按钮：手机横屏也要收 */
+  :root[data-menu-theme] body:not([data-terminal-mode='battle']) .terminal-chrome .terminal-header {
+    height: 62px;
+    padding: 10px 16px 0;
+    gap: 12px;
+  }
+  :root[data-menu-theme] body:not([data-terminal-mode='battle']) .terminal-chrome .terminal-tab {
+    width: auto;
+    flex: 1;
+    height: 40px;
+    padding: 0 10px;
+    font-size: calc(11px * var(--interface-text-scale, 1));
+  }
+  :root[data-menu-theme] body:not([data-terminal-mode='battle']) .terminal-chrome .terminal-history :is(a, button) {
+    padding: 5px 4px;
+    font-size: calc(11px * var(--interface-text-scale, 1));
+  }
+  :root[data-menu-theme] body:not([data-terminal-mode='battle']) .terminal-options { right: 12px; bottom: 10px; }
+}
+
+/* ---- ② 平板 / 大屏：舒展档 ------------------------------------------------------------- */
+@media (min-width: 1100px) and (min-height: 720px) {
+  :root[data-menu-theme] body .menu__content { width: min(100%, 1500px); padding: 96px 4vw 56px; }
+  :root[data-menu-theme] body .menu__heading h1 { font-size: calc(34px * var(--interface-text-scale, 1)); }
+  :root[data-menu-theme] body .menu__heading p { font-size: calc(14px * var(--interface-text-scale, 1)); }
+  :root[data-menu-theme] body .menu__cards,
+  :root[data-menu-theme] body .menu__cards--four { gap: 22px; }
+  :root[data-menu-theme] body .menu-card { min-height: 420px; padding: 28px 30px 0; }
+  :root[data-menu-theme] body .menu-card__art { height: clamp(80px, 13vh, 140px); margin: 14px 0; }
+  :root[data-menu-theme] body .menu-card__art b { font-size: 84px; }
+  :root[data-menu-theme] body .menu-card__body strong { font-size: calc(30px * var(--interface-text-scale, 1)); }
+  :root[data-menu-theme] body .menu-card__body > span { font-size: calc(14px * var(--interface-text-scale, 1)); }
+  :root[data-menu-theme] body .menu-card__foot { padding: 18px 30px; font-size: calc(15px * var(--interface-text-scale, 1)); }
+}
+
+/* ---- ③ 超宽屏（平板横放 / 桌面）：四列 + 大留白 ---------------------------------------- */
+@media (min-width: 1600px) and (min-height: 900px) {
+  :root[data-menu-theme] body .menu__content { width: min(100%, 1720px); }
+  :root[data-menu-theme] body .menu-card { min-height: 470px; }
+  :root[data-menu-theme] body .menu-card__art b { font-size: 96px; }
+  :root[data-menu-theme] body .menu-card__body strong { font-size: calc(34px * var(--interface-text-scale, 1)); }
+}
+
+/* ---- 竖屏窄机（极少数情况）：单列，避免卡片被压扁 -------------------------------------- */
+@media (max-width: 520px) and (max-height: 900px) {
+  :root[data-menu-theme] body .menu__cards,
+  :root[data-menu-theme] body .menu__cards--four { grid-template-columns: 1fr; }
+}

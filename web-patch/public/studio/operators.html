@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>干员数值 · 明日方舟模拟器</title>
+  <link rel="icon" href="/icons/favicon.ico?v=arksim" sizes="16x16 32x32 48x48" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/sandbox/menu.css" />
+  <link rel="stylesheet" href="/sandbox/terminal.css" />
+  <link rel="stylesheet" href="/sandbox/menu-themes.css" />
+  <link rel="stylesheet" href="/sandbox/menu-layout.css" />
+  <link rel="stylesheet" href="/sandbox/interface-text.css" />
+  <link rel="stylesheet" href="/sandbox/menu-fit.css" />
+  <link rel="stylesheet" href="/css/mobile-fit.css" />
+  <link rel="stylesheet" href="/studio/operators.css" />
+  <script src="/sandbox/js/terminal-navigation.js"></script>
+  <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
+</head>
+<body class="menu-screen ops-screen">
+  <div class="menu__rail"><span>ARKNIGHTS / SIMULATOR</span><span>OPERATOR TUNING</span></div>
+  <main class="ops">
+    <header class="ops__head">
+      <div>
+        <span class="menu__eyebrow">OPERATOR TUNING</span>
+        <h1>干员数值<span>调整</span></h1>
+        <p>改动只保存成一份覆盖表，官方原表不动。改过的数字在沙盒与作战里立刻生效。</p>
+      </div>
+      <a class="ops__back" href="/studio/home.html">← 返回主菜单</a>
+    </header>
+
+    <div class="ops__bar">
+      <input class="ops__search" id="ops-search" type="search" placeholder="搜索干员名 / 职业 / id" autocomplete="off" />
+      <select class="ops__filter" id="ops-prof" aria-label="按职业筛选">
+        <option value="">全部职业</option>
+        <option value="PIONEER">先锋</option><option value="WARRIOR">近卫</option>
+        <option value="SNIPER">狙击</option><option value="MEDIC">医疗</option>
+        <option value="CASTER">术师</option><option value="SPECIAL">特种</option>
+        <option value="TANK">重装</option><option value="SUPPORT">辅助</option>
+      </select>
+      <select class="ops__filter" id="ops-rarity" aria-label="按星级筛选">
+        <option value="0">全部星级</option>
+        <option value="6">★★★★★★</option><option value="5">★★★★★</option>
+        <option value="4">★★★★</option><option value="3">★★★</option>
+        <option value="2">★★</option><option value="1">★</option>
+      </select>
+      <select class="ops__filter" id="ops-module" aria-label="按模组筛选">
+        <option value="any">全部（模组）</option>
+        <option value="has">有模组</option>
+        <option value="none">无模组</option>
+      </select>
+      <label class="ops__only"><input type="checkbox" id="ops-only-edited" /> 只看已改过的</label>
+      <span class="ops__count" id="ops-count">读取中…</span>
+      <button type="button" class="ops__custom" id="ops-new-custom">＋ 新建自定义干员</button>
+      <button type="button" class="ops__reset" id="ops-reset-all" disabled>全部还原</button>
+    </div>
+
+    <div class="ops__layout">
+      <ul class="ops__list" id="ops-list" role="listbox" aria-label="干员列表"></ul>
+      <div id="ops-custom-host"></div>
+      <section class="ops__detail" id="ops-detail">
+        <p class="ops__hint">从左边选一个干员。</p>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/studio/js/operators.js"></script>
+</body>
+</html>

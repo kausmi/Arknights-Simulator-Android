@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>教程与帮助 · 明日方舟模拟器</title>
+  <link rel="icon" href="/icons/favicon.ico?v=arksim" sizes="16x16 32x32 48x48" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/sandbox/menu.css" />
+  <link rel="stylesheet" href="/sandbox/terminal.css" />
+  <link rel="stylesheet" href="/sandbox/menu-themes.css" />
+  <link rel="stylesheet" href="/sandbox/menu-layout.css" />
+  <link rel="stylesheet" href="/sandbox/interface-text.css" />
+  <link rel="stylesheet" href="/sandbox/menu-fit.css" />
+  <link rel="stylesheet" href="/css/mobile-fit.css" />
+  <link rel="stylesheet" href="/studio/help.css" />
+  <script src="/sandbox/js/terminal-navigation.js"></script>
+  <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
+</head>
+<body class="menu-screen help-screen">
+  <div class="menu__rail"><span>ARKNIGHTS / SIMULATOR</span><span>FIELD MANUAL</span></div>
+  <main class="help">
+    <header class="help__head">
+      <div>
+        <span class="menu__eyebrow">FIELD MANUAL</span>
+        <h1>教程与<span>帮助</span></h1>
+        <p>从第一次进来到改数值、读资源，都在这里。也可以随时在设置里按「教程与帮助」回到本页。</p>
+      </div>
+      <a class="help__back" href="/studio/home.html">← 返回主菜单</a>
+    </header>
+
+    <nav class="help__toc" aria-label="目录">
+      <a href="#first" data-toc="first">01 首次上手</a>
+      <a href="#sandbox" data-toc="sandbox">02 自由沙盒</a>
+      <a href="#level" data-toc="level">03 关卡制作</a>
+      <a href="#operators" data-toc="operators">04 干员数值</a>
+      <a href="#assets" data-toc="assets">05 读取方舟资源</a>
+      <a href="#skin" data-toc="skin">06 皮肤与小人</a>
+      <a href="#mobile" data-toc="mobile">07 手机操作</a>
+      <a href="#faq" data-toc="faq">08 常见问题</a>
+    </nav>
+
+    <section class="help__body" id="help-body">
+      <noscript><p class="help__note">本页需要 JavaScript 才能显示内容。</p></noscript>
+      <p class="help__note" id="help-loading">正在载入教程…</p>
+    </section>
+  </main>
+  <script type="module" src="/studio/js/help.js"></script>
+</body>
+</html>

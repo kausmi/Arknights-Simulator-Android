@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>明日方舟模拟器</title>
+  <link rel="icon" href="/icons/favicon.ico?v=arksim">
+  <link rel="stylesheet" href="/sandbox/music-shell.css">
+  <script type="module" src="/sandbox/js/music-shell.js"></script>
+  <!-- 把 Android 壳量到的挖孔 / 手势条尺寸写进 CSS 变量：env(safe-area-inset-*) 在
+       WebView 里常常没值，而且本页可能跑在 iframe 里拿不到外层变量，所以每个文档自己问一次。 -->
+  <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
+</head>
+<body><iframe name="simulator-workspace" title="明日方舟模拟器" allow="autoplay; fullscreen" allowfullscreen></iframe></body>
+</html>
