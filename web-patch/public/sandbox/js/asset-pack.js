@@ -240,3 +240,79 @@ export function wireAssetSection(dialog) {
   refresh();
   return () => clearInterval(timer);
 }
+
+/* ---- 壳里的提示 / 授权教程：由网页画，不用原生弹窗 ---------------------------------------------
+   原生 AlertDialog 套的是 Theme.Black.NoTitleBar.Fullscreen，在 Android 12+ 上会退化成
+   老式方框，观感像安卓 2.3，跟整体终端风完全不搭。所以壳把这两件事交给网页：
+     window.__arksimToast(text)        一条终端风提示
+     window.__arksimShowShizukuHelp()  Shizuku 授权教程弹层
+   ---- */
+
+function overlay(html) {
+  const mask = document.createElement('div');
+  mask.className = 'arksim-overlay';
+  mask.innerHTML = `<div class="arksim-overlay__box">${html}</div>`;
+  document.body.append(mask);
+  const close = () => mask.remove();
+  mask.addEventListener('click', (e) => {
+    if (e.target === mask || e.target.closest('[data-arksim-close]')) close();
+  });
+  return close;
+}
+
+export function showToast(text) {
+  if (!text) return;
+  const t = document.createElement('div');
+  t.className = 'arksim-toast';
+  t.textContent = String(text);
+  document.body.append(t);
+  setTimeout(() => { t.classList.add('is-out'); }, 2600);
+  setTimeout(() => t.remove(), 3200);
+}
+
+export function showShizukuHelp() {
+  const st = readAssetState();
+  const flavor = (st.flavors || []).find((f) => f.id === st.currentFlavor);
+  const path = flavor?.path || '/storage/emulated/0/Android/data/com.hypergryph.arknights/files/Bundles';
+  overlay(`
+    <header class="arksim-overlay__head">
+      <span class="menu__eyebrow">SHIZUKU / HOW TO</span>
+      <button type="button" class="arksim-overlay__close" data-arksim-close aria-label="关闭">×</button>
+    </header>
+    <h2>读取方舟资源 · 需要 Shizuku 授权</h2>
+    <p class="arksim-overlay__lead">要读的是这个目录：</p>
+    <code class="arksim-overlay__path">${escapeHtml(path)}</code>
+    <p>它属于《明日方舟》自己，普通应用（包括本应用，即使拿到「所有文件访问权限」）都进不去，
+       只有 shell 身份能读。所以借 Shizuku 拿一个 shell 身份 —— 全程<b>只读</b>，不改动方舟任何文件，
+       提取出来的东西只写在本应用自己的目录里。</p>
+    <h3>步骤</h3>
+    <ol class="arksim-overlay__steps">
+      <li>安装并打开 <a href="https://shizuku.rikka.app/" target="_blank" rel="noopener">Shizuku</a>
+          （开源免费，无需 root）。</li>
+      <li>按 Shizuku 里的提示启动它的服务：用「无线调试」配对启动即可。</li>
+      <li>回到本应用，点「开始提取」。应用内会弹 Shizuku 的授权框，选<b>允许</b>。</li>
+      <li>授权通过后再点一次「开始提取」，等进度走完。</li>
+    </ol>
+    <h3>几个要留意的点</h3>
+    <ul class="arksim-overlay__list">
+      <li>Shizuku 服务重启后，本应用需要重新授权一次。</li>
+      <li>手机重启后，Shizuku 需要重新启动一次。</li>
+      <li>如果之前拒绝过授权，系统不会再弹框 —— 要回 Shizuku App 里手动改。</li>
+      <li>资源读不到时，先确认游戏里已经把「完整资源包」下载完。</li>
+    </ul>
+    <p class="arksim-overlay__note">没走通也不影响玩：只是官方美术换成替代素材，玩法与数值完全不受影响。</p>
+    <div class="arksim-overlay__foot">
+      <button type="button" class="arksim-overlay__btn" data-arksim-close>知道了</button>
+    </div>
+  `);
+}
+
+// 壳里会按这两个名字调。
+// 注意：asset-pack.js 只在「设置对话框」里被 import，页面首次加载时可能还没执行到，
+// 所以 __arksimToast 的兜底版在页面里先挂了一份（见各 studio 页面的内联脚本），
+// 这里再覆盖成带样式的真实现。__arksimShowShizukuHelp 则只在这里提供 ——
+// 壳调它的时候用户一定在设置页，模块已经加载过了。
+if (typeof globalThis !== 'undefined') {
+  globalThis.__arksimToast = (t) => showToast(t);
+  globalThis.__arksimShowShizukuHelp = () => showShizukuHelp();
+}

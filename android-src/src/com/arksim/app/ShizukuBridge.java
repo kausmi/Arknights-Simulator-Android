@@ -169,14 +169,59 @@ public final class ShizukuBridge {
         }
     }
 
-    /** 弹系统的 Shizuku 授权框。 */
-    public static void request(Activity act) {
+    /** 授权结果回调，给 Activity 拿来做提示。 */
+    public interface PermissionCallback {
+        void onResult(boolean granted);
+    }
+
+    private static PermissionCallback pendingCallback;
+    private static boolean listenerRegistered;
+
+    /**
+     * 弹 Shizuku 的应用内授权框。
+     *
+     * 要点：必须先用 addRequestPermissionResultListener 注册回调，系统弹窗答复后
+     * 结果才会异步回到应用；不注册的话 requestPermission 发出去就没回音，
+     * 界面上看着像「授权了没反应」。
+     */
+    public static void request(Activity act, PermissionCallback cb) {
+        pendingCallback = cb;
         try {
+            ensurePermissionListener();
+            if (!alive()) {
+                if (cb != null) cb.onResult(false);
+                return;
+            }
+            if (granted()) {
+                if (cb != null) cb.onResult(true);
+                return;
+            }
             if (Shizuku.shouldShowRequestPermissionRationale()) {
-                // 用户之前拒过，只能回 Shizuku App 里手动授权。
+                // 之前被拒过：系统不会再弹窗，只能回 Shizuku App 里手动改授权
+                if (cb != null) cb.onResult(false);
                 return;
             }
             Shizuku.requestPermission(REQUEST_CODE);
+        } catch (Throwable t) {
+            if (cb != null) cb.onResult(false);
+        }
+    }
+
+    /** 兼容旧签名（不需要结果回调的调用点）。 */
+    public static void request(Activity act) {
+        request(act, null);
+    }
+
+    private static void ensurePermissionListener() {
+        if (listenerRegistered) return;
+        listenerRegistered = true;
+        try {
+            Shizuku.addRequestPermissionResultListener((requestCode, grantResult) -> {
+                if (requestCode != REQUEST_CODE) return;
+                PermissionCallback cb = pendingCallback;
+                pendingCallback = null;
+                if (cb != null) cb.onResult(grantResult == PackageManager.PERMISSION_GRANTED);
+            });
         } catch (Throwable ignored) {
         }
     }
@@ -199,12 +244,61 @@ public final class ShizukuBridge {
         return (Process) out;
     }
 
-    /** 当前包体的资源目录能不能读到（需要 Shizuku 已授权且服务在跑）。 */
+    /**
+     * 当前包体的资源目录能不能读到。
+     *
+     * 注意：这里**不能**用 File.canRead()。那个方法按「本应用自己的 uid」判断权限，
+     * 而应用身份读不到方舟的专属目录（那是设计如此），所以即使 Shizuku 已授权、
+     * shell 明明能读，canRead() 也永远返回 false —— 之前「授权了还是进不去」
+     * 就是这个假阴性造成的。
+     *
+     * 正确做法：让 shell 身份（uid 2000）自己去试一次。真能读到才算数。
+     */
     public static boolean arkDirReadable() {
+        if (!alive() || !granted()) return false;
         try {
-            return new File(arkBundles()).canRead();
+            // test -r 只检查可读，不列目录、不读内容，开销可以忽略
+            Process p = process(
+                    new String[]{"sh", "-c", "test -r '" + arkBundles() + "' && echo OK"},
+                    new String[]{"PATH=/system/bin:/system/xbin"},
+                    "/data/local/tmp");
+            java.io.InputStream in = p.getInputStream();
+            byte[] buf = new byte[64];
+            int n = in.read(buf);
+            p.waitFor();
+            return n > 0 && new String(buf, 0, n, "UTF-8").contains("OK");
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    /**
+     * 用 shell 身份把资源目录的状态读成一句话，给设置页显示「为什么读不到」。
+     * 返回形如 {"ok":true,"entries":12} 或 {"ok":false,"reason":"..."} 的 JSON。
+     */
+    public static String arkDirProbe() {
+        String path = arkBundles();
+        if (!alive()) return "{\"ok\":false,\"reason\":\"Shizuku 服务没有在运行\"}";
+        if (!granted()) return "{\"ok\":false,\"reason\":\"还没有授权本应用使用 Shizuku\"}";
+        try {
+            // 同时给出「能不能进、里面有没有东西」，这样设置页能说清楚是哪一步卡住
+            String script = "if [ -r '" + path + "' ]; then "
+                    + "  n=$(ls '" + path + "' 2>/dev/null | wc -l); echo \"OK $n\"; "
+                    + "else echo \"NOREAD\"; fi";
+            Process p = process(new String[]{"sh", "-c", script},
+                    new String[]{"PATH=/system/bin:/system/xbin"}, "/data/local/tmp");
+            java.io.InputStream in = p.getInputStream();
+            byte[] buf = new byte[128];
+            int n = in.read(buf);
+            p.waitFor();
+            String out = n > 0 ? new String(buf, 0, n, "UTF-8").trim() : "";
+            if (out.startsWith("OK")) {
+                String cnt = out.substring(2).trim();
+                return "{\"ok\":true,\"entries\":\"" + cnt + "\",\"path\":\"" + path + "\"}";
+            }
+            return "{\"ok\":false,\"reason\":\"shell 身份也读不到这个目录：目录不存在，或游戏资源没下载完\",\"path\":\"" + path + "\"}";
+        } catch (Throwable t) {
+            return "{\"ok\":false,\"reason\":\"" + t.toString().replace("\"", "'") + "\"}";
         }
     }
 

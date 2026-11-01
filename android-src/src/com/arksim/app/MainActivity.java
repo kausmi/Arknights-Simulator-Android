@@ -1,7 +1,6 @@
 package com.arksim.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -345,12 +344,19 @@ public class MainActivity extends Activity {
             if (!ShizukuBridge.flavorInstalled(f)) return "没检测到" + f.label + "（" + f.pkg + "），请先安装并下载完资源";
             if (!ShizukuBridge.alive()) return "Shizuku 没有在运行，请先启动 Shizuku";
             if (!ShizukuBridge.granted()) {
-                ui.post(() -> ShizukuBridge.request(MainActivity.this));
-                return "请在弹出的对话框里允许本应用使用 Shizuku，然后重试";
+                ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
+                    ExtractTask.get().phase(ExtractTask.Phase.IDLE,
+                            ok ? "Shizuku 已授权，可以点「开始提取」了" : "授权被拒绝，可以再点一次重试");
+                }));
+                return "已弹出 Shizuku 授权框，请选「允许」，然后回来点「开始提取」";
             }
             // 授权了但目录还是读不到：多半是资源没下完，或者选错了服
             if (!ShizukuBridge.arkDirReadable()) {
-                return "读不到 " + f.label + " 的资源目录，确认游戏内已下载完整资源包";
+                String probe = ShizukuBridge.arkDirProbe();
+                if (probe.contains("目录不存在") || probe.contains("没下载完")) {
+                    return "读不到 " + f.label + " 的资源目录：确认游戏内已下载完「完整资源包」，或换到正确的客户端";
+                }
+                return "读不到 " + f.label + " 的资源目录";
             }
             ui.post(() -> startExtraction(true));
             return "已开始提取 " + f.label + " 的资源";
@@ -414,10 +420,23 @@ public class MainActivity extends Activity {
             return outDir.isDirectory() ? dirSize(outDir) : 0;
         }
 
-        /** 打开方舟目录的授权说明（用户点了「授权教程」时弹）。 */
+        /**
+         * 「授权教程」：交给网页自己画（终端风，跟整体界面一致）。
+         * 之前这里是原生 AlertDialog，它套用了 Theme.Black.NoTitleBar.Fullscreen，
+         * 在 Android 12+ 上会退化成很老的方框样式，观感上像安卓 2.3 —— 所以不再用原生弹窗。
+         */
         @JavascriptInterface
         public void showShizukuHelp() {
-            ui.post(() -> showShizukuGuide());
+            ui.post(() -> {
+                if (web != null) web.evaluateJavascript(
+                        "window.__arksimShowShizukuHelp && window.__arksimShowShizukuHelp();", null);
+            });
+        }
+
+        /** 用 shell 身份实测资源目录状态，给「为什么读不到」一个确切原因。 */
+        @JavascriptInterface
+        public String arkDirProbe() {
+            return ShizukuBridge.arkDirProbe();
         }
     }
 
@@ -450,38 +469,6 @@ public class MainActivity extends Activity {
         return total;
     }
 
-    /** Shizuku 授权教程：一步一步照做就行，纯文字，手机上看得清。 */
-    private void showShizukuGuide() {
-        String msg = "本功能要读取手机里《明日方舟》的资源目录：\n"
-                + "Android/data/com.hypergryph.arknights/files/Bundles\n\n"
-                + "那个目录属于方舟自己，普通应用（包括本应用）即使拿到「所有文件访问权限」也进不去，"
-                + "只有 shell 身份能读。所以借用 Shizuku 拿 shell 身份，全程只读、不改动方舟的任何文件。\n\n"
-                + "步骤：\n"
-                + "1. 安装并打开 Shizuku（开源免费，应用商店或 shizuku.rikka.app）\n"
-                + "2. 按 Shizuku 里的提示启动它的服务（用无线调试配对启动，无需 root）\n"
-                + "3. 回到本应用点「读取方舟资源」，弹出授权框时选「允许」\n"
-                + "4. 再点一次「开始提取」，等进度走完\n\n"
-                + "注意：\n"
-                + "· Shizuku 服务重启后需要重新授权本应用\n"
-                + "· 手机重启后 Shizuku 需要重新启动\n"
-                + "· 提取只读取与转换，不写入方舟目录\n"
-                + "· 提取出来的图片只存在本应用自己的目录里\n\n"
-                + "如果完全没有装 Shizuku，也可以跳过这步：游戏照样能玩，只是部分官方美术（"
-                + "棋盘贴图、干员立绘、敌人模型等）会用替代素材。";
-        new AlertDialog.Builder(this)
-                .setTitle("读取方舟资源 · 需要 Shizuku 授权")
-                .setMessage(msg)
-                .setPositiveButton("知道了", null)
-                .setNeutralButton("去装 Shizuku", (d, w) -> {
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://shizuku.rikka.app/")));
-                    } catch (Throwable ignored) {
-                    }
-                })
-                .show();
-    }
-
     private File runtimeDir() {
         File base = getExternalFilesDir(null);
         return new File(base == null ? getFilesDir() : base, "rt");
@@ -504,32 +491,56 @@ public class MainActivity extends Activity {
                     if (line.startsWith("done:")) ui.post(() -> status.setText(line));
                 });
                 task.finish(code);
-                final String msg = code == 0
-                        ? "资源提取完成"
-                        : "资源提取失败（退出码 " + code + "）\n\n" + task.tail(4000);
-                ui.post(() -> {
-                    if (notify) {
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("提取方舟资源")
-                                .setMessage(msg)
-                                .setPositiveButton("知道了", null)
-                                .show();
-                    }
-                });
+                if (notify) {
+                    toastOnPage(code == 0
+                            ? "资源提取完成"
+                            : "资源提取失败（退出码 " + code + "）" + task.tail(400));
+                }
             } catch (Throwable t) {
                 ExtractTask.get().fail(t.toString());
-                final String msg = "提取失败：" + t + "\n\n" + Log.tail(t);
-                ui.post(() -> {
-                    if (notify) {
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("提取方舟资源")
-                                .setMessage(msg)
-                                .setPositiveButton("知道了", null)
-                                .show();
-                    }
-                });
+                if (notify) toastOnPage("提取失败：" + t);
             }
         }, "arksim-extract").start();
+    }
+
+    /**
+     * 在网页上弹一个终端风提示，而不是原生 AlertDialog。
+     *
+     * 原生 AlertDialog 套的是 Theme.Black.NoTitleBar.Fullscreen，在 Android 12+ 上会退化成
+     * 老式方框（观感像安卓 2.3），和整体界面完全不搭 —— 所以壳里不再用原生弹窗，
+     * 统一让网页画（window.__arksimToast）。
+     */
+    private void toastOnPage(String text) {
+        if (web == null) return;
+        final String js = "(function(){var t=" + jsonString(text) + ";"
+                + "if(window.__arksimToast){window.__arksimToast(t);}"
+                + "else if(window.__arksimShowShizukuHelp){window.__arksimShowShizukuHelp();}"
+                + "})();";
+        ui.post(() -> {
+            try {
+                web.evaluateJavascript(js, null);
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
+    /** 把任意字符串转成 JS 字符串字面量（含引号）。 */
+    private static String jsonString(String s) {
+        if (s == null) return "\"\"";
+        StringBuilder sb = new StringBuilder("\"");
+        for (char c : s.toCharArray()) {
+            switch (c) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default:
+                    if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+                    else sb.append(c);
+            }
+        }
+        return sb.append('"').toString();
     }
 
     @Override

@@ -1,0 +1,26 @@
+
+/* ---- 加入手牌：多选区 ---------------------------------------------------------------- */
+.pk__foot { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid #535a5b44; flex-wrap: wrap; }
+.pk__foot:empty { display: none; }
+.pk__multi {
+  padding: 5px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid #c4c2ac33; background: #1c2220; color: #c3cbc7;
+  font: 12px var(--font-cjk);
+}
+.pk__multi.is-on { border-color: #4de3b6; background: #12463a44; color: #9aead7; }
+.pk__multicount { color: #8a948f; font: 11px var(--font-mono); }
+.pk__multiadd {
+  margin-left: auto; padding: 5px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid #4de3b688; background: #12463a; color: #b6ffe8;
+  font: 12px var(--font-cjk); font-weight: 600;
+}
+.pk__multiadd:disabled { opacity: .4; cursor: default; }
+/* 勾选态：卡片右上角一个勾 + 边框高亮 */
+.pk__op.is-picked { border-color: #4de3b6; background: #4de3b614; }
+.pk__check {
+  position: absolute; top: 3px; right: 3px; width: 15px; height: 15px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid #c4c2ac55; background: #0c0f0ecc;
+  color: #4de3b6; font: 10px/1 sans-serif; font-style: normal;
+}
+.pk__op { position: relative; }

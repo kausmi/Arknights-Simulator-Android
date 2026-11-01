@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/sandbox/menu-fit.css" />
   <link rel="stylesheet" href="/css/mobile-fit.css" />
   <link rel="stylesheet" href="/studio/operators.css" />
+  <link rel="stylesheet" href="/sandbox/menu.css" />
   <script src="/sandbox/js/terminal-navigation.js"></script>
   <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
 </head>
@@ -40,6 +41,9 @@
         <option value="SNIPER">狙击</option><option value="MEDIC">医疗</option>
         <option value="CASTER">术师</option><option value="SPECIAL">特种</option>
         <option value="TANK">重装</option><option value="SUPPORT">辅助</option>
+      </select>
+      <select class="ops__filter" id="ops-subprof" aria-label="按子职业筛选">
+        <option value="">全部子职业</option>
       </select>
       <select class="ops__filter" id="ops-rarity" aria-label="按星级筛选">
         <option value="0">全部星级</option>
@@ -67,5 +71,17 @@
     </div>
   </main>
   <script type="module" src="/studio/js/operators.js"></script>
+  <script>
+    // 壳（Android）调用的两个入口：一条提示、一个授权教程弹层。
+    // 包里那套终端风弹层由 /sandbox/js/ui/asset-pack.js 提供；这里先挂占位，
+    // 等它加载完再覆盖成真实现 —— 这样壳在任何时刻调都不会报错。
+    window.__arksimToast = function (t) {
+      var d = document.createElement('div');
+      d.className = 'arksim-toast'; d.textContent = t;
+      document.body.appendChild(d);
+      setTimeout(function () { d.classList.add('is-out'); }, 2600);
+      setTimeout(function () { d.remove(); }, 3200);
+    };
+  </script>
 </body>
 </html>

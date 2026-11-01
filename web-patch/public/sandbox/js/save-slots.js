@@ -104,3 +104,21 @@ export function activateSave(save, storage = globalThis.localStorage) {
   try { storage.setItem(SAVE_KEY, JSON.stringify(save)); }
   catch { throw new Error('无法写入本地存储，未能载入地图。'); }
 }
+
+/**
+ * 清空全部存档数据：10 个槽位 + 战场缓存 + 当前绑定的槽位标记。
+ *
+ * 只删沙盒自己的键（SLOTS_KEY / SAVE_KEY / ACTIVE_KEY），不碰别的功能的存储
+ * （比如干员数值覆盖、设置、编队），那些不属于「存档数据」。
+ */
+export function wipeAllSaves(storage = globalThis.localStorage) {
+  try {
+    storage.removeItem(SLOTS_KEY);
+    storage.removeItem(SAVE_KEY);
+  } catch { /* 存储不可用也没关系，下面照样清 sessionStorage */ }
+  try {
+    globalThis.sessionStorage?.removeItem(ACTIVE_KEY);
+  } catch { /* 忽略 */ }
+  // 清完写回一份空表，避免下次读取时又从 legacy 键恢复出旧存档
+  try { writeSlots(Array(SLOT_COUNT).fill(null), storage); } catch { /* 忽略 */ }
+}

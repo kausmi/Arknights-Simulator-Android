@@ -16,15 +16,12 @@
 //
 // 原则：原值永远是官方数字，现值是叠了覆盖后真正生效的数字；两者不同即「已改」。
 
-const PROFESSIONS = {
-  PIONEER: '先锋', WARRIOR: '近卫', SNIPER: '狙击', MEDIC: '医疗',
-  CASTER: '术师', SPECIAL: '特种', TANK: '重装', SUPPORT: '辅助',
-};
+const PROFESSIONS = PROFESSION_CN;
 const RARITY_LABEL = (r) => '★'.repeat(Math.max(1, Math.min(6, Number(r) || 1)));
 
 /** 基础数值的可编辑字段。 */
 const STAT_FIELDS = [
-  ['maxHp', '生命上限'], ['atk', '攻击'], ['def', '防御'], ['res', '法抗'],
+  ['potRank', '潜能'], ['maxHp', '生命上限'], ['atk', '攻击'], ['def', '防御'], ['res', '法抗'],
   ['cost', '部署费用'], ['blockCnt', '阻挡数'], ['bat', '攻击间隔'], ['aspd', '攻速'],
   ['respawnTime', '再部署'], ['spRecovery', '技力回复'], ['hpRecoveryPerSec', '每秒回血'],
   ['moveSpeed', '移动速度'], ['tauntLevel', '嘲讽等级'], ['massLevel', '重量等级'],
@@ -36,6 +33,9 @@ const MODULE_ATTR_FIELDS = ['maxHp', 'atk', 'def', 'res', 'cost', 'blockCnt', 'a
 const CATEGORY_LABEL = { stats: '基础数值', trait: '职业特性', talents: '天赋', modules: '模组' };
 
 import { renderCustomEditor, renderCustomList } from './custom-operator.js';
+import {
+  PROFESSION_CN, SUB_PROFESSION_CN, subProfessionCn, professionCn, moduleTypeCn, skillKeyCn,
+} from './tables.js';
 
 const el = (id) => document.getElementById(id);
 const listEl = el('ops-list');
@@ -47,6 +47,7 @@ const resetAllEl = el('ops-reset-all');
 const profEl = el('ops-prof');
 const rarityEl = el('ops-rarity');
 const moduleEl = el('ops-module');
+const subProfEl = el('ops-subprof');
 
 let native = {};      // 官方原表
 let edited = {};      // 覆盖表
@@ -56,6 +57,7 @@ let onlyEdited = false;
 let filterProf = '';
 let filterRarity = '0';
 let filterModule = 'any';
+let filterSub = '';
 
 const hasEdits = (id) => {
   const e = edited[id];
@@ -86,6 +88,33 @@ async function loadAll() {
   const data = await api('/api/operators');
   native = (data && data.operators) || {};
   edited = (data && data.edited) || {};
+  fillSubProfessions();
+}
+
+/** 把数据里出现过的子职业填进筛选下拉（按职业分组，用中文名显示）。 */
+function fillSubProfessions() {
+  if (!subProfEl) return;
+  const seen = new Map();      // subId -> profession
+  for (const rec of Object.values(native)) {
+    const id = rec?.subProfessionId;
+    if (id && !seen.has(id)) seen.set(id, rec.profession || '');
+  }
+  const groups = {};
+  for (const [id, prof] of seen) {
+    (groups[prof] = groups[prof] || []).push(id);
+  }
+  const keep = filterSub;
+  const parts = ['<option value="">全部子职业</option>'];
+  for (const prof of Object.keys(PROFESSIONS)) {
+    const ids = groups[prof];
+    if (!ids || !ids.length) continue;
+    const opts = ids
+      .sort((a, b) => subProfessionCn(a).localeCompare(subProfessionCn(b), 'zh-Hans-CN'))
+      .map((id) => `<option value="${esc(id)}"${id === keep ? ' selected' : ''}>${esc(subProfessionCn(id))}</option>`)
+      .join('');
+    parts.push(`<optgroup label="${esc(professionCn(prof))}">${opts}</optgroup>`);
+  }
+  subProfEl.innerHTML = parts.join('');
 }
 
 /* ---- 列表 + 筛选 ------------------------------------------------------------------------------ */
@@ -94,6 +123,7 @@ function passes(id) {
   const rec = native[id] || {};
   if (onlyEdited && !hasEdits(id)) return false;
   if (filterProf && rec.profession !== filterProf) return false;
+  if (filterSub && rec.subProfessionId !== filterSub) return false;
   if (filterRarity !== '0' && String(rec.rarity) !== filterRarity) return false;
   if (filterModule !== 'any') {
     const n = Array.isArray(rec.modules) ? rec.modules.length : 0;
@@ -107,7 +137,9 @@ function passes(id) {
   return true;
 }
 
-function renderList() {
+function renderList({ keepScroll = true } = {}) {
+  // 点击某个干员只该高亮变化，不该把列表滚回顶部 —— 所以重建前记住位置、重建后放回去。
+  const prevTop = keepScroll ? listEl.scrollTop : 0;
   const ids = Object.keys(native).sort((a, b) => {
     const na = native[a]?.name || '', nb = native[b]?.name || '';
     return na.localeCompare(nb, 'zh-Hans-CN') || a.localeCompare(b);
@@ -127,12 +159,13 @@ function renderList() {
     btn.dataset.id = id;
     const cats = editedCats(id);
     btn.innerHTML = `<span class="ops__item__name">${esc(rec.name || id)}</span>`
-      + `<span class="ops__item__meta">${esc(PROFESSIONS[rec.profession] || '')}</span>`
+      + `<span class="ops__item__meta">${esc(professionCn(rec.profession))}</span>`
       + (cats.length ? `<span class="ops__flag">已改</span>` : '');
     li.append(btn);
     frag.append(li);
   }
   listEl.replaceChildren(frag);
+  if (keepScroll) listEl.scrollTop = prevTop;
   if (!shown.length) {
     const li = document.createElement('li');
     li.innerHTML = '<p class="ops__hint">没有匹配的干员。</p>';
@@ -153,10 +186,17 @@ function kvGrid(pairs, origin, patch, pathPrefix) {
     const cell = document.createElement('div');
     cell.className = 'ops__field';
     const id = 'k-' + String(pathPrefix + '.' + key).replace(/[^\w.-]/g, '_');
-    cell.innerHTML = `<label for="${esc(id)}">${esc(label)}</label>`
+    // 数值项的标签：能翻成中文就翻（bucket.bb 里是 atk / duration 这类内部键）
+    const shown = label === key ? skillKeyCn(key) : label;
+    // 潜能默认 0（官方表里没这一项，但玩家想按 0-6 潜改数值时会用到）
+    const dflt = key === 'potRank' ? 0 : '';
+    const showCur = cur === undefined || cur === null ? dflt : cur;
+    const showOrigin = o === undefined || o === null ? dflt : o;
+    cell.innerHTML = `<label for="${esc(id)}">${esc(shown)}<i class="ops__key">${esc(key)}</i></label>`
       + `<input id="${esc(id)}" type="number" step="any" data-kv="${esc(pathPrefix)}" data-key="${esc(key)}"`
-      + ` value="${esc(num(cur, ''))}"${p !== undefined ? ' class="is-changed"' : ''}>`
-      + `<span class="ops__origin">原值 ${esc(num(o))}</span>`;
+      + ` value="${esc(num(showCur, dflt))}"${p !== undefined ? ' class="is-changed"' : ''}>`
+      + `<span class="ops__origin">原值 ${esc(num(showOrigin, dflt))}</span>`
+      + `<span class="ops__now" data-now></span>`;
     cell.dataset.origin = JSON.stringify(o === undefined ? null : o);
     wrap.append(cell);
   }
@@ -192,8 +232,9 @@ function renderDetail() {
 
   const title = document.createElement('div');
   title.className = 'ops__title';
+  const subCn = subProfessionCn(rec.subProfessionId || '');
   title.innerHTML = `<h2>${esc(rec.name || selected)}</h2>`
-    + `<span class="ops__prof">${esc(PROFESSIONS[rec.profession] || rec.profession || '')}</span>`
+    + `<span class="ops__prof">${esc(professionCn(rec.profession))}${subCn && subCn !== rec.profession ? ` · ${esc(subCn)}` : ''}</span>`
     + `<span class="ops__rarity">${RARITY_LABEL(rec.rarity)}</span>`
     + `<small>${esc(selected)}</small>`;
   detailEl.append(title);
@@ -277,7 +318,9 @@ function renderDetail() {
       const delta = ((e.modules || {})[uid]) || {};
       const box = document.createElement('div');
       box.className = 'ops__module';
-      box.innerHTML = `<h4>模组 · ${esc(m.name || uid)}${m.typeName ? '（' + esc(m.typeName) + '）' : ''}`
+      const typeCn = m.typeName ? moduleTypeCn(m.typeName) : '';
+      box.innerHTML = `<h4>模组 · ${esc(m.name || uid)}`
+        + `${m.typeName ? ` · ${esc(typeCn)}（${esc(m.typeName)}）` : ''}`
         + `${m.isDefault ? ' <i class="ops__modtag">默认</i>' : ''}</h4>`;
 
       // 等级
@@ -491,15 +534,19 @@ listEl.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-id]');
   if (!btn) return;
   selected = btn.dataset.id;
-  renderList();
+  // 只在现有节点上切换高亮，不重建列表（重建会让滚动位置归零，用户被弹回顶部）
+  for (const el of listEl.querySelectorAll('[data-id]')) {
+    el.classList.toggle('is-on', el.dataset.id === selected);
+  }
   renderDetail();
 });
 
-searchEl.addEventListener('input', () => { keyword = (searchEl.value || '').trim().toLowerCase(); renderList(); });
-onlyEl.addEventListener('change', () => { onlyEdited = onlyEl.checked; renderList(); });
-profEl?.addEventListener('change', () => { filterProf = profEl.value; renderList(); });
-rarityEl?.addEventListener('change', () => { filterRarity = rarityEl.value; renderList(); });
-moduleEl?.addEventListener('change', () => { filterModule = moduleEl.value; renderList(); });
+searchEl.addEventListener('input', () => { keyword = (searchEl.value || '').trim().toLowerCase(); renderList({ keepScroll: false }); });
+onlyEl.addEventListener('change', () => { onlyEdited = onlyEl.checked; renderList({ keepScroll: false }); });
+profEl?.addEventListener('change', () => { filterProf = profEl.value; renderList({ keepScroll: false }); });
+rarityEl?.addEventListener('change', () => { filterRarity = rarityEl.value; renderList({ keepScroll: false }); });
+moduleEl?.addEventListener('change', () => { filterModule = moduleEl.value; renderList({ keepScroll: false }); });
+subProfEl?.addEventListener('change', () => { filterSub = subProfEl.value; renderList({ keepScroll: false }); });
 
 detailEl.addEventListener('click', (e) => {
   if (e.target.closest('[data-dismiss-banner]')) {
@@ -524,7 +571,54 @@ detailEl.addEventListener('input', (e) => {
   const v = input.value.trim() === '' ? null : Number(input.value);
   const differs = v === null ? origin !== null : (origin === null || v !== origin);
   input.classList.toggle('is-changed', differs);
+  updateNow(cell, input, origin, v);
 });
+
+/**
+ * 实时把「改后生效值」写到字段下面。
+ *
+ * 为什么需要：之前只有「原值」一行，玩家填完不知道最终会生效多少。
+ * 现在每改一次就立刻显示：
+ *   · 数值类字段 → 直接显示填入的数（保存后就是它生效）
+ *   · 与潜能相关的基础数值 → 同时标出「按 N 潜折算后」
+ * 计算规则照官方：每级潜能对该干员主要数值 +2%（生命/攻击/防御），法抗每级 +0~1（不折算）。
+ */
+function updateNow(cell, input, origin, v) {
+  if (!cell) return;
+  const nowEl = cell.querySelector('[data-now]');
+  if (!nowEl) return;
+  if (v === null || !Number.isFinite(v)) { nowEl.textContent = ''; return; }
+  const key = input.dataset.key;
+  const potEl = detailEl.querySelector('input[data-key="potRank"]');
+  const pot = potEl ? Math.max(0, Math.min(6, Number(potEl.value) || 0)) : 0;
+
+  if (key === 'potRank') {
+    nowEl.textContent = `当前 ${v} 潜`;
+    // 潜能一变，所有基础数值的折算提示都要重算
+    refreshAllNow();
+    return;
+  }
+  const potable = ['maxHp', 'atk', 'def'].includes(key);
+  if (potable && pot > 0) {
+    const scaled = v * (1 + 0.02 * pot);
+    nowEl.textContent = `改后 ${round2(v)} → ${pot}潜折算 ${round2(scaled)}`;
+  } else {
+    nowEl.textContent = `改后 ${round2(v)}`;
+  }
+}
+
+const round2 = (n) => (Math.round(n * 100) / 100).toString();
+
+/** 重算所有字段的「改后」提示（潜能变化时调用）。 */
+function refreshAllNow() {
+  for (const input of detailEl.querySelectorAll('input[data-kv]')) {
+    const cell = input.closest('.ops__field');
+    let origin = null;
+    try { origin = cell && cell.dataset.origin ? JSON.parse(cell.dataset.origin) : null; } catch { origin = null; }
+    const v = input.value.trim() === '' ? null : Number(input.value);
+    updateNow(cell, input, origin, v);
+  }
+}
 
 resetAllEl.addEventListener('click', revertAll);
 

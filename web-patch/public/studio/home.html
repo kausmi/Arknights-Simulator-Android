@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/sandbox/interface-text.css" />
   <link rel="stylesheet" href="/sandbox/menu-fit.css" />
   <link rel="stylesheet" href="/css/mobile-fit.css" />
+  <link rel="stylesheet" href="/sandbox/menu.css" />
   <script src="/sandbox/js/terminal-navigation.js"></script>
   <!-- 把 Android 壳量到的挖孔 / 手势条尺寸写进 CSS 变量：env(safe-area-inset-*) 在
        WebView 里常常没值，而且本页可能跑在 iframe 里拿不到外层变量，所以每个文档自己问一次。 -->
@@ -28,8 +29,10 @@
       <h1>明日方舟<span>模拟器</span></h1><p>从一次自由演练，到一场完整作战。</p>
       <img class="menu__brand" src="/icons/app.svg" alt="ARK/SIM" width="125" height="125" />
     </header>
-    <div class="menu__cards menu__cards--five">
-      <a class="menu-card" href="/studio/console.html">
+    <!-- 主界面排布：三个「玩」的主功能放大卡，两个「配置 / 查阅」的次入口放下面一条小卡。
+         手机上五张等大的卡会挤成一条缝，分层之后主次一目了然。 -->
+    <div class="menu__primary">
+      <a class="menu-card menu-card--hero" href="/studio/console.html">
         <span class="menu-card__top">01 / SANDBOX <span>自由演练</span></span>
         <span class="menu-card__art menu-card__art--sandbox" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg><b>SI</b></span>
         <span class="menu-card__body"><strong>自由沙盒</strong><span>构筑地形，部署干员，编排敌人与路线。<br>十个本地存档位，可自定义名称，随时保存与继续。</span></span>
@@ -47,19 +50,21 @@
         <span class="menu-card__body"><strong>关卡制作器</strong><span>设计地形、路线与敌人出生。<br>制作关卡，保存分享，打开试玩。</span></span>
         <span class="menu-card__foot">进入编辑器 <b>→</b></span>
       </a>
-      <a class="menu-card" href="/studio/help.html">
-        <span class="menu-card__top">05 / FIELD MANUAL <span>教程帮助</span></span>
-        <span class="menu-card__art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 5h7v15H4z M13 5h7v15h-7z M11 3v18"/></svg><b>FM</b></span>
-        <span class="menu-card__body"><strong>教程与帮助</strong><span>首次上手、沙盒操作、改数值、读方舟资源。<br>一页讲完，随时可查。</span></span>
-        <span class="menu-card__foot">查看手册 <b>→</b></span>
+    </div>
+
+    <div class="menu__secondary">
+      <a class="menu-mini" href="/studio/operators.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 20V10 M10 20V5 M16 20v-7 M22 20V8"/></svg>
+        <div><b>干员数值调整</b><small>基础数值 · 模组 · 天赋 · 职业特性</small></div>
+        <span class="menu-mini__arrow">→</span>
       </a>
-      <a class="menu-card" href="/studio/operators.html">
-        <span class="menu-card__top">04 / OPERATOR TUNING <span>干员数据</span></span>
-        <span class="menu-card__art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 20V10 M10 20V5 M16 20v-7 M22 20V8"/></svg><b>OT</b></span>
-        <span class="menu-card__body"><strong>干员数值调整</strong><span>生命、攻击、防御、费用……逐项改。<br>只保存改动，随时一键还原。</span></span>
-        <span class="menu-card__foot">调整干员 <b>→</b></span>
+      <a class="menu-mini" href="/studio/help.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 5h7v15H4z M13 5h7v15h-7z M11 3v18"/></svg>
+        <div><b>教程与帮助</b><small>上手流程 · 操作 · 读资源 · 常见问题</small></div>
+        <span class="menu-mini__arrow">→</span>
       </a>
     </div>
+
     <footer class="menu__footer"><span>ARKNIGHTS SIMULATOR</span><span>战场构筑 / 作战演练</span></footer>
   </main>
   <script type="module">
@@ -71,5 +76,17 @@
     }
   </script>
   <script type="module" src="/sandbox/js/terminal-shell.js"></script>
+  <script>
+    // 壳（Android）调用的两个入口：一条提示、一个授权教程弹层。
+    // 包里那套终端风弹层由 /sandbox/js/ui/asset-pack.js 提供；这里先挂占位，
+    // 等它加载完再覆盖成真实现 —— 这样壳在任何时刻调都不会报错。
+    window.__arksimToast = function (t) {
+      var d = document.createElement('div');
+      d.className = 'arksim-toast'; d.textContent = t;
+      document.body.appendChild(d);
+      setTimeout(function () { d.classList.add('is-out'); }, 2600);
+      setTimeout(function () { d.remove(); }, 3200);
+    };
+  </script>
 </body>
 </html>

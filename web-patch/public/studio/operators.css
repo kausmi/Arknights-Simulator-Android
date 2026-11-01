@@ -36,8 +36,17 @@
 }
 .ops__reset:disabled { opacity: .35; cursor: default; }
 
+/* 桌面 / 平板横屏：左列表 + 右详情。判断依据是「够不够宽」+「横向还是纵向」，
+   不能只看 width —— 平板横放时 CSS 宽度常常只有 800 出头，用 max-width:860px 会误判成手机竖屏，
+   把详情整个挤到列表下面去（这就是之前平板上干员数据跑到最下面的原因）。 */
 .ops__layout { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 18px; align-items: start; }
-@media (max-width: 860px) { .ops__layout { grid-template-columns: 1fr; } }
+
+/* 只有「窄且竖」才单列：手机竖屏。横屏一律保持左右两栏。 */
+@media (max-width: 720px) and (orientation: portrait) { .ops__layout { grid-template-columns: 1fr; } }
+/* 手机横屏：短边很矮，但仍分两栏，只把列表收窄，详情占右边大头 */
+@media (max-height: 620px) and (orientation: landscape) {
+  .ops__layout { grid-template-columns: minmax(180px, 240px) 1fr; gap: 12px; }
+}
 
 .ops__list {
   list-style: none; margin: 0; padding: 6px; max-height: 62vh; overflow: auto;
@@ -191,3 +200,27 @@
   .ops__custom-list li { flex-wrap: wrap; }
   .ops__custom-list li small { flex-basis: 100%; }
 }
+
+/* 横屏（含平板横放）：列表用满可用高度，62vh 在矮屏上只剩两三行。
+   详情区自己滚动，列表独立滚动，两者不互相挤。 */
+@media (orientation: landscape) {
+  .ops__list { max-height: calc(100dvh - 210px); }
+  .ops__detail { max-height: calc(100dvh - 210px); overflow: auto; }
+}
+@media (max-height: 620px) and (orientation: landscape) {
+  .ops__list { max-height: calc(100dvh - 150px); }
+  .ops__detail { max-height: calc(100dvh - 150px); overflow: auto; }
+  .ops__head h1 { font-size: 20px; margin: 4px 0; }
+  .ops__head p { display: none; }
+  .ops__bar { gap: 5px; }
+  .ops__filter, .ops__custom, .ops__reset, .ops__search { min-height: 30px; padding: 5px 9px; font-size: 12px; }
+}
+
+/* 数值项标签：中文名 + 后面跟小号内部键（方便对照官方数据，又不喧宾夺主） */
+.ops__key {
+  display: inline-block; margin-left: 5px; padding: 0 4px; border-radius: 3px;
+  font: 9.5px/14px var(--font-mono); font-style: normal;
+  color: #6f7a74; background: #ffffff08; border: 1px solid #c4c2ac18;
+  vertical-align: middle; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.ops__field label { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }

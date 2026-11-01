@@ -1,4 +1,4 @@
-import { SLOT_COUNT, listSaveSlots, writeSaveSlot, deleteSaveSlot, copySaveSlot, newSandbox } from '../save-slots.js';
+import { SLOT_COUNT, listSaveSlots, writeSaveSlot, deleteSaveSlot, copySaveSlot, newSandbox, wipeAllSaves } from '../save-slots.js';
 import { mapDigest } from '../battlefield.js';
 import { esc } from './html.js';
 import { levelThumbnail } from '../../../../shared/level-preview.js';
@@ -36,6 +36,7 @@ export function openSaveManager({ current, onLoad, onClose, onSaved, onNew, host
     dialog.innerHTML = `<header class="saves__head"><div><span class="menu__eyebrow">LOCAL ARCHIVE / ${pad2(SLOT_COUNT)}</span><h2 id="saves-title">本地存档</h2></div>
       <button type="button" class="menu__button" data-save="close" aria-label="关闭存档窗口">关闭 ×</button></header>
       ${onNew ? '<button type="button" class="menu__button menu__button--primary" data-save="new">＋ 新建空白沙盒</button>' : ''}
+      <button type="button" class="menu__button menu__button--danger" data-save="wipe">清空全部存档数据</button>
       <p class="saves__intro">保存此刻在场的干员、敌人、当前位置、血量、技力和地图，载入后暂停。</p>
       <div class="saves__layout"><div class="saves__list">${cards}</div><section class="saves__detail">
       <span class="menu__eyebrow">ARCHIVE / ${pad2(selected + 1)}</span><h3>${esc(slot?.name || '新建沙盒存档')}</h3>
@@ -82,6 +83,16 @@ export function openSaveManager({ current, onLoad, onClose, onSaved, onNew, host
         writeSaveSlot(selected, current ? current() : slot && !slot.damaged ? slot.save : newSandbox(), dialog.querySelector('#save-name').value);
         onSaved?.(selected);
         message = `已保存到 ${pad2(selected + 1)} 号存档位`;
+      }
+      if (action === 'wipe') {
+        if (!window.confirm('清空全部存档数据？10 个存档位会全部清空，且清掉战场缓存。此操作无法撤销。')) return;
+        wipeAllSaves();
+        slots = listSaveSlots();
+        selected = 0;
+        message = '已清空全部存档数据';
+        bad = false;
+        render();
+        return;
       }
       if (action === 'delete') {
         if (!slot || !window.confirm(`删除「${slot.name}」？此操作无法撤销。`)) return;

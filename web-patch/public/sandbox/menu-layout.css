@@ -327,14 +327,3 @@ html[data-motion='reduce'] .operation-invitation-threads i { animation: none !im
 @media (max-width: 800px) {
   :root[data-menu-theme] body .menu__cards--four { grid-template-columns: 1fr; }
 }
-
-/* 主菜单第五入口（教程与帮助）。同 .menu__cards--four，放末尾以盖掉阶梯缩进。 */
-:root[data-menu-theme] body[data-terminal-mode='menu'] .menu__cards--five,
-:root[data-menu-theme] body[data-terminal-mode='battle'] .menu__cards--five { grid-template-columns: 1.14fr 1fr 1fr 1fr 1fr; gap: 14px; }
-:root[data-menu-theme] body .menu__cards--five > .menu-card:nth-child(4) { margin-top: 52px; }
-:root[data-menu-theme] body .menu__cards--five > .menu-card:nth-child(5) { margin-top: 78px; }
-@media (max-width: 1400px) {
-  :root[data-menu-theme] body .menu__cards--five { grid-template-columns: 1fr 1fr 1fr; }
-  :root[data-menu-theme] body .menu__cards--five > .menu-card:nth-child(n) { margin-top: 0; }
-}
-

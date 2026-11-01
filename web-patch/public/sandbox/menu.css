@@ -174,10 +174,7 @@
 .menu__cards--four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .menu__cards--four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 800px) { .menu__cards--four { grid-template-columns: 1fr; } }
-.menu__cards--five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-@media (max-width: 1400px) { .menu__cards--five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 900px) { .menu__cards--five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 800px) { .menu__cards--five { grid-template-columns: 1fr; } }
+/* .menu__cards--five 已废弃：主页改成「三主功能 + 两次入口」的分层排布，见 menu-fit.css。 */
 .menu__cards--three .menu-card { padding-left: 18px; padding-right: 18px; }
 .menu__cards--single { grid-template-columns: minmax(0, 540px); justify-content: center; }
 @media (max-width: 800px) { .menu__cards--three { grid-template-columns: 1fr; } }
@@ -289,4 +286,71 @@
 @media (max-height: 620px) {
   .settings__flavor-list { grid-template-columns: 1fr 1fr; }
   .settings__flavor { padding: 5px 8px; }
+}
+
+/* ---- 网页版提示 / 授权教程弹层（替代原生 AlertDialog） --------------------------------------
+   原生弹窗在 Android 12+ 上会退化成安卓 2.3 那样的方框，所以壳把提示与教程交给网页画。
+   这里沿用终端风：深底、细边框、等宽小字。 */
+.arksim-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  display: grid; place-items: center;
+  padding: calc(14px + var(--sa-t, 0px)) calc(14px + var(--sa-r, 0px)) calc(14px + var(--sa-b, 0px)) calc(14px + var(--sa-l, 0px));
+  background: #050807d9; backdrop-filter: blur(3px);
+}
+.arksim-overlay__box {
+  width: min(560px, 100%); max-height: calc(100dvh - 36px); overflow: auto;
+  padding: 16px 20px 14px; border-radius: 10px;
+  border: 1px solid #c4c2ac33; border-top: 2px solid #c28d47;
+  background: linear-gradient(160deg, #1b2124, #111417);
+  color: #c3cbc7; font: 13px/1.8 var(--font-cjk); box-shadow: 0 24px 80px #000a;
+}
+.arksim-overlay__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.arksim-overlay__head .menu__eyebrow { color: #d9ac68; font: 10.5px var(--font-mono); letter-spacing: .18em; }
+.arksim-overlay__close {
+  width: 26px; height: 26px; padding: 0; cursor: pointer;
+  border: 1px solid #c4c2ac33; border-radius: 50%; background: none;
+  color: #c3cbc7; font: 15px/1 sans-serif;
+}
+.arksim-overlay__close:hover { border-color: #4de3b6; color: #9aead7; }
+.arksim-overlay__box h2 { margin: 2px 0 10px; font-size: 18px; color: #f2f2f2; letter-spacing: .03em; line-height: 1.4; }
+.arksim-overlay__box h3 { margin: 14px 0 6px; font-size: 13px; color: #e9c77e; letter-spacing: .05em; }
+.arksim-overlay__lead { margin: 0 0 4px; color: #8a948f; }
+.arksim-overlay__path {
+  display: block; margin: 0 0 10px; padding: 7px 10px; border-radius: 6px;
+  background: #0a0e0d; border: 1px solid #4de3b62b; color: #9aead7;
+  font: 11.5px/1.6 var(--font-mono); word-break: break-all;
+}
+.arksim-overlay__box p { margin: 8px 0; }
+.arksim-overlay__box b { color: #ffc600; }
+.arksim-overlay__steps { margin: 0; padding-left: 18px; }
+.arksim-overlay__steps li { margin: 5px 0; line-height: 1.8; }
+.arksim-overlay__steps li::marker { color: #4de3b6; }
+.arksim-overlay__steps a { color: #9aead7; }
+.arksim-overlay__list { margin: 0; padding-left: 18px; }
+.arksim-overlay__list li { margin: 4px 0; color: #96a09b; font-size: 12.5px; line-height: 1.75; }
+.arksim-overlay__list li::marker { color: #6f7a74; }
+.arksim-overlay__note { margin-top: 12px !important; padding: 8px 10px; border-radius: 6px;
+  background: #4de3b60e; border-left: 2px solid #4de3b666; color: #9aead7; font-size: 12.5px; }
+.arksim-overlay__foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.arksim-overlay__btn {
+  padding: 8px 18px; border-radius: 8px; cursor: pointer;
+  border: 1px solid #4de3b688; background: #12463a; color: #b6ffe8;
+  font: 13px var(--font-cjk); font-weight: 600;
+}
+
+/* 轻提示（toast）：底部一行，不挡操作 */
+.arksim-toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(24px + var(--sa-b, 0px)); z-index: 310;
+  max-width: min(90vw, 560px); padding: 9px 16px; border-radius: 999px;
+  background: #1a1610f2; border: 1px solid #ffc60066; color: #ffd970;
+  font: 12.5px/1.5 var(--font-cjk); box-shadow: 0 8px 26px #0008;
+  opacity: 1; transition: opacity .5s, transform .5s;
+}
+.arksim-toast.is-out { opacity: 0; transform: translateX(-50%) translateY(8px); }
+
+@media (max-height: 520px) {
+  .arksim-overlay__box { padding: 12px 14px 10px; font-size: 12.5px; }
+  .arksim-overlay__box h2 { font-size: 16px; }
+  .arksim-overlay__steps li, .arksim-overlay__list li { line-height: 1.6; }
 }
