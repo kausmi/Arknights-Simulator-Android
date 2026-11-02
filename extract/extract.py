@@ -981,8 +981,12 @@ def main():
         chars, n = operators.export(ab_root, out_root, manifest, print, art_ids)
         total += n
     print(f'AB root: {ab_root}')
-    for job in jobs:
-        total += export_bundle(ab_root, job, out_root, manifest, print)
+    # 进度行：App 侧据此算百分比与剩余时间（本脚本不知道外面还要跑几步，
+    # 所以只报「第几件 / 共几件」，整体完成度由 Java 侧按步骤权重折算）。
+    for _i, _job in enumerate(jobs, 1):
+        print(f'PROGRESS {_i}/{len(jobs)} {job_parts(_job)[0]}')
+        sys.stdout.flush()
+        total += export_bundle(ab_root, _job, out_root, manifest, print)
     if enemy_ids:
         total += export_enemy_spines(ab_root, out_root, manifest, print, enemy_ids)
     if token_ids:

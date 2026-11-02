@@ -135,13 +135,17 @@ public final class WebInstaller {
      *   data/local-assets.*        —— 上面那批图的清单
      *   data/operators-index.json  —— 干员名单（扫 skinpack 得到）
      *   data/operator-overrides.json —— 用户在「干员数值调整」里改过的数值
+     *   public/assets/skin         —— 详情页按需解出来的干员皮肤立绘
+     *   data/local-skins.json      —— 上面那批皮肤的索引
      *   content/levels             —— 用户自己做的关卡
      */
     private static final String[] KEEP_PATHS = {
             "public/assets/local",
             "public/assets/char",
+            "public/assets/skin",
             "data/local-assets.json",
             "data/local-fx.json",
+            "data/local-skins.json",
             "data/operators-index.json",
             "data/operator-overrides.json",
             "content/levels",

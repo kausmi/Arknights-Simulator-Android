@@ -41,18 +41,19 @@ export const SUB_PROFESSION_CN = {
   fortress: '要塞', primprotector: '本源铁卫',
   // 辅助
   bard: '吟游者', slower: '削弱者', summoner: '召唤师', craftsman: '工匠',
-  alchemist: '炼金师', counsellor: '谋士', geek: '技术人员',
+  alchemist: '炼金师', counsellor: '谋士', geek: '技术人员', guerrilla: '游击手',
   // 特种
   executor: '处决者', pusher: '推击手', hookmaster: '钩索师', stalker: '伏击客',
   gecko: '傀儡师', dollkeeper: '人偶师', skywalker: '行空使', reaperrange: '荒域客',
   merchant: '行商', loopshooter2: '回环射手', supportiveranger: '支援射手',
-  watchman: '巡空者', mercenary: '佣兵',
+  watchman: '巡空者', mercenary: '佣兵', dispatcher: '调度者',
 };
 
 /** 模组类型代号（CCR-Y 这种）→ 中文说明。取不到的显示代号。 */
 export const MODULE_TYPE_CN = {
   CCR: '术师', MAR: '近卫', SUP: '辅助', TAN: '重装', SPE: '特种',
   SNO: '狙击', MED: '医疗', PIO: '先锋', EXE: '处决', UPR: '成长',
+  AMB: '特种', INS: '近卫', PRP: '重装',
 };
 
 /**

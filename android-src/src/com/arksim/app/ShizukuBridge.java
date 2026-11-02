@@ -394,6 +394,41 @@ public final class ShizukuBridge {
         }
     }
 
+    /**
+     * 方舟资源包（chararts / skinpack 这些目录）的版本指纹。
+     *
+     * 用来判断「游戏更新了，本地提取的美术是不是过期了」。做法只看目录的 mtime 与文件数：
+     * `find <dir> -newer <marker>` 那种精确比对要走 shell 遍历 17G，慢到不可接受；
+     * 而方舟每次热更都会重写这些目录里的文件，目录 mtime 一定会变，够用了。
+     *
+     * 返回形如 "chararts:467:1730000000|skinpack:434:1729999999"；读不到返回 ""。
+     */
+    public static String arkAssetFingerprint() {
+        if (!alive() || !granted()) return "";
+        String root = arkBundles();
+        try {
+            String script = "cd '" + root + "' 2>/dev/null || exit 0; "
+                    + "for d in chararts skinpack skinpack_dyn; do "
+                    + "  if [ -d \"$d\" ]; then "
+                    + "    n=$(ls \"$d\" 2>/dev/null | wc -l); "
+                    + "    t=$(stat -c %Y \"$d\" 2>/dev/null || echo 0); "
+                    + "    echo -n \"$d:$n:$t|\"; "
+                    + "  fi; "
+                    + "done";
+            Process p = process(new String[]{"sh", "-c", script},
+                    new String[]{"PATH=/system/bin:/system/xbin"}, "/data/local/tmp");
+            java.io.InputStream in = p.getInputStream();
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[512];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            p.waitFor();
+            return bo.toString("UTF-8").trim();
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
     /** 供调试：拿 binder 看看到底连上没有。 */
     public static String describe() {
         try {

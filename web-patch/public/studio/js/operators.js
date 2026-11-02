@@ -1,6 +1,7 @@
 // public/studio/js/operators.js — 干员数值编辑器（/studio/operators.html）
 //
-// 四类可改的东西，各自独立存在、独立还原：
+// 五类可改的东西，各自独立存在、独立还原：
+//   ⓪ loadout  携带（潜能 / 技能 / 模组 / 立绘）
 //   ① stats    基础数值（生命/攻击/防御/费用…）
 //   ② trait    职业特性（trait.bb 里的键值）
 //   ③ talents  天赋（每个天赋的 bb 键值）
@@ -30,9 +31,13 @@ const STAT_FIELDS = [
 /** 模组属性可编辑字段。 */
 const MODULE_ATTR_FIELDS = ['maxHp', 'atk', 'def', 'res', 'cost', 'blockCnt', 'aspd', 'respawnTime'];
 
-const CATEGORY_LABEL = { stats: '基础数值', trait: '职业特性', talents: '天赋', modules: '模组' };
+const CATEGORY_LABEL = { loadout: '携带与潜能', stats: '基础数值', trait: '职业特性', talents: '天赋', modules: '模组' };
+const CATEGORY_ORDER = ['loadout', 'stats', 'trait', 'talents', 'modules'];
 
 import { renderCustomEditor, renderCustomList } from './custom-operator.js';
+// 潜能必须按官方每人的 potDown 表折算 —— 每个干员「潜能给什么」都不一样
+// （有的降费用、有的降再部署、有的加攻），统一按 +2% 算必错。
+import { atRank, hasPotentialData, POTENTIAL_MAX } from '../../../shared/potential.js';
 import {
   PROFESSION_CN, SUB_PROFESSION_CN, subProfessionCn, professionCn, moduleTypeCn, skillKeyCn,
 } from './tables.js';
@@ -52,6 +57,7 @@ const subProfEl = el('ops-subprof');
 
 let native = {};      // 官方原表
 let edited = {};      // 覆盖表
+let skinsByChar = {}; // charId -> [{id,name,art,artB}]（来自解包出来的 data/local-skins.json）
 let selected = null;
 let keyword = '';
 let onlyEdited = false;
@@ -63,11 +69,11 @@ let filterSub = '';
 const hasEdits = (id) => {
   const e = edited[id];
   if (!e) return false;
-  return ['stats', 'trait', 'talents', 'modules'].some((c) => e[c] && Object.keys(e[c]).length);
+  return CATEGORY_ORDER.some((c) => e[c] && Object.keys(e[c]).length);
 };
 const editedCats = (id) => {
   const e = edited[id] || {};
-  return ['stats', 'trait', 'talents', 'modules'].filter((c) => e[c] && Object.keys(e[c]).length);
+  return CATEGORY_ORDER.filter((c) => e[c] && Object.keys(e[c]).length);
 };
 
 const num = (v, fallback = '—') => (typeof v === 'number' && Number.isFinite(v) ? String(v) : fallback);
@@ -89,7 +95,25 @@ async function loadAll() {
   const data = await api('/api/operators');
   native = (data && data.operators) || {};
   edited = (data && data.edited) || {};
+  await loadSkins();
   fillSubProfessions();
+}
+
+/**
+ * 读解包出来的皮肤索引。
+ *
+ * 官方表（chess.json / assets.json）里**没有**皮肤字段，皮肤只能从本机 skinpack 解，
+ * 索引落在 data/local-skins.json。没解过就是空的 —— 这时详情页显示「去解这个干员的皮肤」。
+ */
+async function loadSkins() {
+  try {
+    const res = await fetch('/data/local-skins.json', { cache: 'no-store' });
+    if (!res.ok) { skinsByChar = {}; return; }
+    const body = await res.json();
+    skinsByChar = (body && body.chars) || {};
+  } catch {
+    skinsByChar = {};
+  }
 }
 
 /** 把数据里出现过的子职业填进筛选下拉（按职业分组，用中文名显示）。 */
@@ -216,6 +240,145 @@ function section(title, body, cat) {
   return box;
 }
 
+/* ---- 携带与潜能 ------------------------------------------------------------------------------ */
+
+/** 当前携带的技能下标（没改过就用记录里的 skill.index）。 */
+function currentSkillIndex(rec, delta) {
+  if (Number.isInteger(delta.skill) && delta.skill >= 0) return delta.skill;
+  const s = rec && rec.skill;
+  if (s && Number.isInteger(s.index)) return s.index;
+  return 0;
+}
+
+/** 当前潜能（1~6）。没改过默认满潜 6 —— 与官方数据一致（chess.json 存的是满潜值）。 */
+function currentPotential(rec, delta) {
+  if (Number.isInteger(delta.potential) && delta.potential >= 1) return delta.potential;
+  return POTENTIAL_MAX;
+}
+
+/** 当前携带的模组 id（"none" = 不装）。 */
+function currentModuleId(rec, delta) {
+  if (typeof delta.module === 'string') return delta.module;
+  const m = rec && rec.module;
+  if (m && m.active && m.id) return String(m.id);
+  return 'none';
+}
+
+/**
+ * 「携带与潜能」面板。
+ *
+ * 为什么潜能要在这里而不是塞进基础数值：官方 `potDown` 是**每一档一个完整的差量表**
+ * （有的干员潜能降部署费用、有的降再部署、有的加攻击），而基础数值里那个「潜能」
+ * 输入框只是个数字，改了它并不会按 potDown 折算。这里选潜能等级，右侧实时把折算后的
+ * 生命/攻击/防御/费用显示出来，用户才看得见自己选了什么。
+ */
+function loadoutBody(rec, delta) {
+  const wrap = document.createElement('div');
+
+  // —— 潜能 ——
+  const pot = currentPotential(rec, delta);
+  const potBox = document.createElement('div');
+  potBox.className = 'ops__loadout';
+  const hasPot = hasPotentialData(rec);
+  const potOpts = [];
+  for (let p = 1; p <= POTENTIAL_MAX; p += 1) {
+    potOpts.push(`<option value="${p}"${p === pot ? ' selected' : ''}>${p} 潜${p === POTENTIAL_MAX ? '（满潜）' : ''}</option>`);
+  }
+  potBox.innerHTML = `<h4>潜能激活数</h4>`
+    + `<div class="ops__row">`
+    + `<select data-loadout="potential" data-init="${pot}"${hasPot ? '' : ' disabled'}>${potOpts.join('')}</select>`
+    + `<span class="ops__hint" data-pot-note></span>`
+    + `</div>`
+    + `<div class="ops__potgrid" data-pot-grid></div>`;
+  wrap.append(potBox);
+
+  // —— 携带技能 ——
+  const skills = Array.isArray(rec.skills) ? rec.skills : [];
+  const si = currentSkillIndex(rec, delta);
+  const skillBox = document.createElement('div');
+  skillBox.className = 'ops__loadout';
+  skillBox.innerHTML = `<h4>携带技能</h4>`;
+  if (!skills.length) {
+    skillBox.insertAdjacentHTML('beforeend', '<p class="ops__hint">这个干员没有技能数据。</p>');
+  } else {
+    const opts = skills.map((sk, i) => `<option value="${i}"${i === si ? ' selected' : ''}>${i + 1}. ${esc(sk.name || ('技能 ' + (i + 1)))}</option>`).join('');
+    skillBox.insertAdjacentHTML('beforeend', `<div class="ops__row"><select data-loadout="skill" data-init="${si}">${opts}</select></div>`
+      + `<p class="ops__desc" data-skill-desc>${esc(skills[si]?.desc || '')}</p>`);
+  }
+  wrap.append(skillBox);
+
+  // —— 携带模组 ——
+  const modules = Array.isArray(rec.modules) ? rec.modules : [];
+  const mid = currentModuleId(rec, delta);
+  const modBox = document.createElement('div');
+  modBox.className = 'ops__loadout';
+  modBox.innerHTML = `<h4>携带模组</h4>`;
+  if (!modules.length) {
+    modBox.insertAdjacentHTML('beforeend', '<p class="ops__hint">这个干员没有模组。' + (rec.module && rec.module.name ? `（官方表里记着一个「${esc(rec.module.name)}」，但本机没有它的属性数据，只能看不能装。）` : '') + '</p>');
+  } else {
+    const opts = ['<option value="none"' + (mid === 'none' ? ' selected' : '') + '>不装模组</option>']
+      .concat(modules.map((m) => {
+        const id = String(m.uniEquipId || '');
+        const typeCn = m.typeName ? moduleTypeCn(m.typeName) : '';
+        return `<option value="${esc(id)}"${id === mid ? ' selected' : ''}>${esc(m.name || id)}${typeCn ? ' · ' + esc(typeCn) : ''}</option>`;
+      })).join('');
+    modBox.insertAdjacentHTML('beforeend', `<div class="ops__row"><select data-loadout="module" data-init="${esc(mid)}">${opts}</select></div>`
+      + `<p class="ops__hint" data-mod-note></p>`);
+  }
+  wrap.append(modBox);
+
+  // —— 立绘 / 皮肤 ——
+  const artBox = document.createElement('div');
+  artBox.className = 'ops__loadout';
+  const art = typeof delta.art === 'string' ? delta.art : (rec.artVariant || 'e0');
+  const arts = [['e0', '精一立绘'], ['e2', '精二立绘']];
+  const unpacked = (rec.charId && skinsByChar[rec.charId]) || [];
+  unpacked.forEach((sk) => {
+    if (sk && sk.id) arts.push([String(sk.id), String(sk.name || sk.id)]);
+  });
+  artBox.innerHTML = `<h4>立绘 / 皮肤</h4>`
+    + `<div class="ops__row"><select data-loadout="art" data-init="${esc(art)}">`
+    + arts.map(([v, label]) => `<option value="${esc(v)}"${v === art ? ' selected' : ''}>${esc(label)}</option>`).join('')
+    + `</select></div>`
+    + (arts.length > 2
+      ? '<p class="ops__hint">皮肤来自本机 skinpack 的实时解包，选中的会用在手牌 / 详情立绘上。</p>'
+      : '<p class="ops__hint">只有精一 / 精二两张。<button type="button" class="ops__mini" data-act="skins">解这个干员的皮肤</button>'
+        + (rec.charId ? `（来自 <code>skinpack/${esc(rec.charId)}.ab</code>，约 1~2 秒）` : '') + '</p>');
+  wrap.append(artBox);
+
+  // 渲染潜能折算表（不依赖用户交互，进页面就先画一遍）
+  queueMicrotask(() => paintPotential(wrap, rec, pot));
+  return wrap;
+}
+
+/** 把某个记录按潜能等级折算后的主要数值画成一张小表。 */
+function paintPotential(root, rec, potential) {
+  const grid = root.querySelector('[data-pot-grid]');
+  const note = root.querySelector('[data-pot-note]');
+  if (!grid) return;
+  if (!hasPotentialData(rec)) {
+    grid.innerHTML = '';
+    if (note) note.textContent = '这位干员没有潜能差异数据（选哪一档都一样）。';
+    return;
+  }
+  if (note) note.textContent = `按官方 potDown 表逐档回放，${potential} 潜时生效值如下。`;
+  const base = rec;                              // 满潜（rank 5）记录
+  const now = atRank(base, potential - 1);       // 目标潜能的记录
+  const keys = [['maxHp', '生命'], ['atk', '攻击'], ['def', '防御'], ['res', '法抗'], ['cost', '费用'], ['respawnTime', '再部署']];
+  const rows = keys.map(([k, label]) => {
+    const a = base?.stats?.[k];
+    const b = now?.stats?.[k];
+    if (typeof a !== 'number' && typeof b !== 'number') return '';
+    const diff = (typeof a === 'number' && typeof b === 'number' && a !== b);
+    return `<div class="ops__potcell${diff ? ' is-diff' : ''}">`
+      + `<span>${esc(label)}</span>`
+      + `<b>${esc(num(b, '—'))}</b>`
+      + (diff ? `<i>${b > a ? '+' : ''}${Math.round((b - a) * 100) / 100}</i>` : '')
+      + `</div>`;
+  }).join('');
+  grid.innerHTML = rows || '<p class="ops__hint">这份数据里没有可折的主要数值。</p>';
+}
+
 function renderDetail() {
   if (!selected || !native[selected]) {
     detailEl.replaceChildren();
@@ -249,6 +412,10 @@ function renderDetail() {
       + '<button type="button" class="ops__banner-close" data-dismiss-banner aria-label="收起提示">×</button>';
     detailEl.append(banner);
   }
+
+  // ⓪ 携带与潜能（这里存的是「携带技能 / 携带模组 / 潜能 / 皮肤」，
+  //    独立于下面四类数值改动，可以单独还原）
+  detailEl.append(section('携带与潜能', loadoutBody(rec, e.loadout || {}), 'loadout'));
 
   // ① 基础数值
   const statsBody = document.createElement('div');
@@ -415,7 +582,28 @@ function setDeep(root, path, key, value) {
  * 最可能的一类成因，所以这里直接比数值。
  */
 function collectPatches() {
-  const patches = { stats: {}, trait: {}, talents: {}, modules: {} };
+  const patches = { loadout: {}, stats: {}, trait: {}, talents: {}, modules: {} };
+
+  // 携带与潜能：**逐项**比较渲染时的初值（data-init），只提交用户真正动过的那几项。
+  // 早先的写法是「四项一起提交」，结果只改技能也会把「潜能=6 / 模组=不装」写进覆盖表，
+  // 把干员原本的默认模组顶掉 —— 那是不可接受的副作用。
+  for (const sel of detailEl.querySelectorAll('[data-loadout]')) {
+    const kind = sel.dataset.loadout;
+    const init = sel.dataset.init;
+    if (sel.value === init) continue;
+    const value = sel.value;
+    if (!value || value === 'none' && kind !== 'module') continue;
+    if (kind === 'potential') {
+      patches.loadout.potential = Number(value);
+    } else if (kind === 'skill') {
+      patches.loadout.skill = Number(value);
+    } else if (kind === 'module') {
+      patches.loadout.module = String(value);
+    } else if (kind === 'art') {
+      patches.loadout.art = String(value);
+    }
+  }
+
   for (const input of detailEl.querySelectorAll('input[data-kv]')) {
     const raw = input.value.trim();
     if (raw === '') continue;
@@ -493,6 +681,45 @@ async function saveCurrent() {
     setStatus('已保存：' + cats.map((c) => CATEGORY_LABEL[c]).join('、'));
   } catch (err) {
     setStatus(err.message || '保存失败', true);
+  }
+}
+
+/**
+ * 解当前这位干员的皮肤。
+ *
+ * 只在网页里跑（AndroidShell 是壳注入的接口），所以浏览器里打开时会走 mock：
+ * 直接提示「需要在 App 里打开」，不会静默失败让人以为点了没反应。
+ */
+async function unpackSkins(btn) {
+  const rec = native[selected];
+  if (!rec) return;
+  const charId = rec.charId;
+  if (!charId) { setStatus('这位干员没有 charId，解不出皮肤', true); return; }
+  const shell = window.AndroidShell;
+  if (!shell || typeof shell.extractSkins !== 'function') {
+    setStatus('皮肤解包只能在 App 里用（浏览器里没有本机资源）', true);
+    return;
+  }
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '正在解…';
+  try {
+    const msg = shell.extractSkins(charId);
+    setStatus(msg || '正在解皮肤…');
+    // 解包在后台线程跑，轮询到索引里出现这位干员为止（最多 30 秒）
+    for (let i = 0; i < 30; i += 1) {
+      await new Promise((r) => setTimeout(r, 1000));
+      await loadSkins();
+      if ((skinsByChar[charId] || []).length) break;
+    }
+    await loadSkins();
+    renderDetail();
+    const n = (skinsByChar[charId] || []).length;
+    setStatus(n ? `已解出 ${n} 套皮肤` : '这次没解出皮肤（这个干员可能只有默认皮肤）');
+  } catch (err) {
+    setStatus(err.message || '解包失败', true);
+    btn.disabled = false;
+    btn.textContent = label;
   }
 }
 
@@ -576,6 +803,33 @@ detailEl.addEventListener('click', (e) => {
   if (!btn) return;
   if (btn.dataset.act === 'save') saveCurrent();
   else if (btn.dataset.act === 'revert') revertCurrent();
+  else if (btn.dataset.act === 'skins') unpackSkins(btn);
+});
+
+detailEl.addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-loadout]');
+  if (!sel) return;
+  const rec = native[selected];
+  if (!rec) return;
+  const kind = sel.dataset.loadout;
+  if (kind === 'potential') {
+    paintPotential(detailEl, rec, Number(sel.value) || POTENTIAL_MAX);
+  } else if (kind === 'skill') {
+    const list = Array.isArray(rec.skills) ? rec.skills : [];
+    const desc = detailEl.querySelector('[data-skill-desc]');
+    const sk = list[Number(sel.value)];
+    if (desc) desc.textContent = sk?.desc || '';
+  } else if (kind === 'module') {
+    const note = detailEl.querySelector('[data-mod-note]');
+    if (!note) return;
+    const list = Array.isArray(rec.modules) ? rec.modules : [];
+    const m = list.find((x) => String(x.uniEquipId || '') === String(sel.value));
+    if (!m) { note.textContent = '装上后干员的数值会回到无模组基础值（生命/攻击/防御各减掉模组加成）。'; return; }
+    const attr = m.attr || {};
+    const bits = Object.keys(attr).filter((k) => typeof attr[k] === 'number')
+      .map((k) => `${({ maxHp: '生命', atk: '攻击', def: '防御', res: '法抗', cost: '费用', blockCnt: '阻挡', aspd: '攻速', respawnTime: '再部署' })[k] || k} +${attr[k]}`);
+    note.textContent = bits.length ? `装上这个模组：${bits.join('，')}。` : '这个模组没有属性加成，只改特性/天赋。';
+  }
 });
 
 detailEl.addEventListener('input', (e) => {

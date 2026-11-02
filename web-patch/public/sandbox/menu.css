@@ -207,6 +207,59 @@
 .settings__assets-size { margin-left: auto; color: #8a948f; font: 11px var(--font-mono); letter-spacing: .05em; }
 .settings__assets-note { margin: 0; color: #6f7a74; }
 
+/* 提取进度条：只在跑的时候显示。条本身用终端风的细长条 + 金色填充，
+   右边三个字分别是「阶段 / 百分比 / 剩余时间」，跑完自动隐藏。 */
+.settings__progress { display: flex; flex-direction: column; gap: 5px; margin: 2px 0 0; }
+.settings__progress[hidden] { display: none; }
+.settings__progress-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: #00000066;
+  border: 1px solid #ffffff14;
+  overflow: hidden;
+}
+.settings__progress-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #c3a466, #f2c94c);
+  box-shadow: 0 0 8px #f2c94c66;
+  transition: width 600ms cubic-bezier(.22, .61, .36, 1);
+}
+.settings__progress-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 11px var(--font-mono, monospace);
+  letter-spacing: .04em;
+  color: #8a948f;
+}
+.settings__progress-meta [data-asset-phase] {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #d0d2c7;
+}
+.settings__progress-meta [data-asset-percent] { color: #f2c94c; font-weight: 600; }
+.settings__progress-meta [data-asset-eta] { color: #6f7a74; }
+
+/* ---- 「该更新方舟资源了」提醒条（ui/asset-hint.js） ----------------------------------
+   复用 arksim-overlay 的遮罩与卡片，只补它自己的排版：编号行 / 标题 / 正文 / 两个按钮。 */
+.asset-hint__eyebrow {
+  margin: 0 0 6px;
+  color: #d9ac68;
+  font: 10.5px var(--font-mono, monospace);
+  letter-spacing: .18em;
+}
+.asset-hint__title { margin: 0 0 10px; }
+.asset-hint__body { margin: 0 0 14px; color: #a8b3ae; line-height: 1.8; }
+.asset-hint__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.asset-hint__note { margin: 0; color: #6f7a74; font-size: 11.5px; }
+
 /* 隐私说明：提取产物只落 App 私有目录，不进相册 */
 .settings__assets-privacy {
   margin: 0;

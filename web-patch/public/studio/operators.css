@@ -251,3 +251,93 @@
 .ops__revert-hint { color: #ffc600; font-size: 13px; letter-spacing: .04em; margin-right: 2px; }
 .ops__revert .ops__mini { min-height: 32px; padding: 5px 11px; font-size: 12.5px; }
 .ops__revert-cancel { color: #8a948f; }
+
+/* ---- 自定义干员的攻击范围画布（js/custom-operator.js） -------------------------------
+   7 行 × 5 列的按钮网格，点一下点亮一格；干员自己那格固定亮着、不能取消。 */
+.ops__rangegrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  max-width: 260px;
+  margin: 10px 0 0;
+}
+.ops__rangegrid[hidden] { display: none; }
+.ops__cell {
+  aspect-ratio: 1;
+  min-height: 30px;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid #ffffff1f;
+  border-radius: 3px;
+  background: #0c100f;
+  color: #6f7a74;
+  font: 10px var(--font-cjk, sans-serif);
+  transition: background 120ms, border-color 120ms;
+}
+.ops__cell:hover { border-color: #4ed8af66; }
+.ops__cell.is-on {
+  background: #4ed8af26;
+  border-color: #4ed8af99;
+  color: #9aead7;
+}
+.ops__cell.is-self {
+  background: #ffc60022;
+  border-color: #ffc60099;
+  color: #ffd970;
+  cursor: default;
+}
+
+.ops__hint { margin: 8px 0 0; color: #6f7a74; font-size: 11.5px; line-height: 1.7; }
+/* ---- 携带与潜能（loadout） ------------------------------------------------------------------ */
+
+.ops__loadout {
+  padding: 10px 0 12px;
+  border-bottom: 1px solid #ffffff10;
+}
+.ops__loadout:last-child { border-bottom: 0; padding-bottom: 0; }
+.ops__loadout > h4 {
+  margin: 0 0 8px;
+  font: 600 13px var(--font-cjk, sans-serif);
+  color: #cfd8d2;
+}
+.ops__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.ops__row select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #ffffff1f;
+  border-radius: 4px;
+  background: #0c100f;
+  color: #d7e0da;
+  font: 13px var(--font-cjk, sans-serif);
+}
+.ops__row .ops__hint { margin: 0; flex: 1 1 180px; }
+
+/* 潜能折算表：一列一个数值，改变的那项标黄并显示增减量。 */
+.ops__potgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+.ops__potcell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid #ffffff14;
+  border-radius: 4px;
+  background: #0b0f0e;
+}
+.ops__potcell > span { font-size: 10.5px; color: #6f7a74; }
+.ops__potcell > b { font: 600 14px var(--font-cjk, sans-serif); color: #d7e0da; }
+.ops__potcell > i { font-style: normal; font-size: 10.5px; color: #f2c94c; }
+.ops__potcell.is-diff { border-color: #f2c94c55; background: #f2c94c0d; }
+.ops__potcell.is-diff > b { color: #f7d97a; }

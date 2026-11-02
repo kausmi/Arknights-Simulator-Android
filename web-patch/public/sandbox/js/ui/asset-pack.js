@@ -32,6 +32,7 @@ export function readAssetState() {
     installed: false, alive: false, granted: false, uid: -1, version: -1,
     arkReadable: false, ready: false, running: false, phase: 'IDLE',
     message: '', bytes: 0, tail: '', exit: -1,
+    percent: 0, step: '', eta: -1,
     flavors: [], currentFlavor: 'cn',
   };
   if (!hasShell()) return out;
@@ -54,9 +55,21 @@ export function readAssetState() {
       ready: !!ex.ready, running: !!ex.running, phase: String(ex.phase || 'IDLE'),
       message: String(ex.message || ''), bytes: Number(ex.bytes) || 0,
       tail: String(ex.tail || ''), exit: Number(ex.exit) || -1,
+      percent: Math.max(0, Math.min(100, Number(ex.percent) || 0)),
+      step: String(ex.step || ''), eta: Number(ex.eta) || -1,
     });
   } catch { /* 保持默认 */ }
   return out;
+}
+
+/** 剩余时间：给个粗糙但好读的量级，估不出来时说实话。 */
+export function fmtEta(sec) {
+  const v = Number(sec);
+  if (!Number.isFinite(v) || v < 0) return '';
+  if (v <= 2) return '就快好了';
+  if (v < 60) return `大约还要 ${Math.round(v)} 秒`;
+  if (v < 3600) return `大约还要 ${Math.round(v / 60)} 分钟`;
+  return `大约还要 ${(v / 3600).toFixed(1)} 小时`;
 }
 
 /** 一句话状态：设置页那行小字。 */
@@ -66,7 +79,12 @@ export function statusLine(st) {
   if (!st.alive) return 'Shizuku 服务没在运行 · 请先启动 Shizuku';
   if (!st.granted) return '还没授权本应用使用 Shizuku';
   if (!st.arkReadable) return '读不到方舟资源目录 · 确认方舟已安装且资源已下载';
-  if (st.running) return `正在提取… ${st.message || ''}`.trim();
+  if (st.running) {
+    const pct = st.percent > 0 ? ` ${st.percent.toFixed(0)}%` : '';
+    const step = st.step ? ` · ${st.step}` : '';
+    const eta = fmtEta(st.eta);
+    return `正在提取${pct}${step}${eta ? ` · ${eta}` : ''}`.trim();
+  }
   if (st.phase === 'FAILED') return `上次提取失败 · ${st.message || ''}`.trim();
   if (st.ready) return `${fmtBytes(st.bytes)} 已就绪`;
   return '已就绪，可以直接提取';
@@ -122,6 +140,14 @@ export function assetSectionHtml(st) {
     </p>
     ${flavorSelectHtml(st)}
     ${steps.length ? `<p class="settings__hint settings__assets-todo">还差一步：${steps.join(' ')}</p>` : ''}
+    <div class="settings__progress" data-asset-progress${st.running ? '' : ' hidden'}>
+      <div class="settings__progress-bar"><i data-asset-fill style="width:${st.percent.toFixed(1)}%"></i></div>
+      <div class="settings__progress-meta">
+        <span data-asset-phase>${escapeHtml(st.step || '准备中')}</span>
+        <span data-asset-percent>${st.percent.toFixed(0)}%</span>
+        <span data-asset-eta>${escapeHtml(fmtEta(st.eta))}</span>
+      </div>
+    </div>
     <div class="settings__assets-actions">
       <button type="button" class="menu__button menu__button--primary" data-asset-extract${disabled}>${btnLabel}</button>
       <button type="button" class="menu__button" data-asset-help>授权教程</button>
@@ -162,6 +188,23 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/** 进度条：只在提取中显示；跑完/失败后藏起来，别留个 100% 的空条。 */
+function paintProgress(st) {
+  const box = document.querySelector('.settings__assets [data-asset-progress]');
+  if (!box) return;
+  const on = !!st.running;
+  box.hidden = !on;
+  if (!on) return;
+  const fill = box.querySelector('[data-asset-fill]');
+  if (fill) fill.style.width = `${st.percent.toFixed(1)}%`;
+  const phase = box.querySelector('[data-asset-phase]');
+  if (phase) phase.textContent = st.step || '准备中';
+  const pct = box.querySelector('[data-asset-percent]');
+  if (pct) pct.textContent = `${st.percent.toFixed(0)}%`;
+  const eta = box.querySelector('[data-asset-eta]');
+  if (eta) eta.textContent = fmtEta(st.eta);
+}
+
 /**
  * 把资源区块接到已打开的设置对话框上：按钮、轮询刷新、教程。
  * @param {HTMLDialogElement} dialog
@@ -193,6 +236,7 @@ export function wireAssetSection(dialog) {
         btn.disabled = st.running;
         btn.textContent = st.running ? '正在提取…' : (st.ready ? '重新提取' : '开始提取');
       }
+      paintProgress(st);
       // 把真实落地路径写出来（App 私有目录），让人一眼看到它不在相册里。
       const pathEl = box.querySelector('[data-asset-path]');
       if (pathEl) {
@@ -270,7 +314,8 @@ export function wireAssetSection(dialog) {
       btn.disabled = st.running;
       btn.textContent = st.running ? '正在提取…' : (st.ready ? '重新提取' : '开始提取');
     }
-  }, 1000);
+    paintProgress(st);
+  }, 700);
 
   return () => clearInterval(timer);
 }

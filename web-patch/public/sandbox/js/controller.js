@@ -23,7 +23,7 @@ import { audio, installAudio } from "../../js/audio.js";
 import { playLevelBgm, stopLevelBgm, levelBgmUrl, bgmVolume } from './level-bgm.js';
 import { absoluteRangeKeys } from '/sim/targeting.js';
 import * as hud from './hud.js';
-import { useAssets } from './asset-urls.js';
+import { useAssets, useArtState } from './asset-urls.js';
 import { ROWS, COLS, TERRAIN, DEFAULT_RECT, defaultStage, paintTile, setRect, normRect, mapDigest, gatesOf, routesOf } from './battlefield.js';
 import { isAvailable } from './roster.js';
 import { ENEMIES, PINNED_MODS } from './spawn-catalog.js';
@@ -1397,6 +1397,12 @@ async function boot({ run = null } = {}) {
   assets = createAssets();
   assets.seed(data.getRaw('assets'));
   useAssets(assets);
+  // 玩家在「干员详情」里给某位干员选的立绘 / 皮肤（覆盖表 loadout.art）+ 本机解出来的皮肤索引。
+  // 拉不到就保持空对象，头像与立绘退回精一 / 精二原图，不影响进游戏。
+  try {
+    const art = await fetch('/data/operator-art.json', { cache: 'no-store' });
+    if (art.ok) useArtState(await art.json());
+  } catch { /* 没有覆盖表或没解过皮肤，用默认立绘 */ }
 
   if (levelRun) { state.document = structuredClone(levelRun.document); state.ui.payDp = true; }
   else loadLocal();

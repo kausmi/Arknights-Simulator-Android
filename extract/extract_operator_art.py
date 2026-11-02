@@ -262,6 +262,8 @@ def main():
         else:
             failed += 1
         if i % 25 == 0 or i == len(bundles):
+            print(f'PROGRESS {i}/{len(bundles)} chararts/{cid}.ab')
+            sys.stdout.flush()
             print(f'[{i}/{len(bundles)}] {cid}: {n} files ({why}) — 累计 {total} 文件 / {done} 干员')
 
     print(f'done: {total} 个文件，{done} 个干员解出，{failed} 个跳过')

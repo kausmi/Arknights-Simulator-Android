@@ -345,7 +345,17 @@
 
   /* 面板：宽度按视口给，不再是 113px 的死宽 */
   .sb .hud__drawer.is-open .dr__panel { width: min(52vw, 330px); }
-  .sb .dr__inner { gap: 8px; padding: 10px; }
+  /* ⚠ 关键：`.dr__inner` 在 sandbox.css 里也写死了 width: 3.55rem（1rem=32px 时只有 113px）。
+     只放宽 .dr__panel 而不改它，内容就全挤在面板左边一条窄带里、右边留一大块黑的空白 ——
+     这就是「地形面板」那个 BUG（截图里选完地形下面一大片空、提示文字被裁成一行）。
+     这里让它跟随面板宽度（width:100% + 归零内边距的外部量），内容才铺得开。 */
+  .sb .dr__inner {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    gap: 10px;
+    padding: 10px 12px;
+  }
 
   .sb .dr__head { font-size: 13px; padding-bottom: 6px; }
   .sb .dr__head small { font-size: 11px; }

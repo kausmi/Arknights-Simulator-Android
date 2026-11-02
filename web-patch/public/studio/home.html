@@ -72,10 +72,15 @@
   <script type="module">
     // 首次进入引导：只在第一次打开主菜单时出现，走完记个标记。
     import { shouldOnboard, showOnboarding } from '/sandbox/js/ui/onboard.js';
-    if (shouldOnboard()) {
+    import { scheduleAssetHint } from '/sandbox/js/ui/asset-hint.js';
+    const onboard = shouldOnboard();
+    if (onboard) {
       // 等入场动画把主页画出来再弹，免得盖住动画
       setTimeout(() => showOnboarding(), 1400);
     }
+    // 「该更新方舟资源了」的提醒：首次进入 / 游戏热更之后各弹一次。
+    // 和引导错开，两层弹窗不会同时叠在一起（asset-hint 内部也会等引导关掉）。
+    scheduleAssetHint({ delay: onboard ? 3200 : 1800 });
   </script>
   <script type="module" src="/sandbox/js/terminal-shell.js"></script>
   <script>

@@ -9,6 +9,9 @@
 //     官方那套召唤物 / 复杂条件 / 多段位移不在支持范围内；
 //   · 没有立绘与 Spine 小人，战斗里显示替代图标。
 
+import { SUB_RANGES, SUB_PROFESSION, subRange } from './sub-ranges.js';
+import { subProfessionCn } from './tables.js';
+
 const PROFESSIONS = [
   ['PIONEER', '先锋'], ['WARRIOR', '近卫'], ['SNIPER', '狙击'], ['MEDIC', '医疗'],
   ['CASTER', '术师'], ['SPECIAL', '特种'], ['TANK', '重装'], ['SUPPORT', '辅助'],
@@ -33,6 +36,23 @@ const RANGE_PRESETS = [
   { id: 'ranged3x3', label: '前方九格', cells: [[0, 1], [0, 2], [0, 3], [-1, 1], [-1, 2], [-1, 3], [1, 1], [1, 2], [1, 3]] },
   { id: 'healer', label: '治疗范围', cells: [[0, 0], [0, 1], [0, 2], [-1, 0], [-1, 1], [-1, 2], [1, 0], [1, 1], [1, 2]] },
 ];
+
+/**
+ * 攻击范围的三种给法：
+ *   preset —— 用上面那 5 个模板（最快）
+ *   sub    —— 沿用所选子职业的官方范围（最省事，也最不容易画歪）
+ *   custom —— 自己在格子上点出来
+ */
+const RANGE_MODES = [
+  ['sub', '沿用子职业范围'],
+  ['preset', '用模板'],
+  ['custom', '自己画'],
+];
+
+/** 自定义范围编辑器的画布：7 行 × 5 列，第 4 行第 3 列是干员自己。 */
+const GRID_ROWS = 7;
+const GRID_COLS = 5;
+const GRID_SELF = { r: 3, c: 2 };
 
 const el = (id) => document.getElementById(id);
 
@@ -74,6 +94,19 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
   const stats = rec.stats || {};
   const skills = Array.isArray(rec.skills) ? rec.skills : [];
   const rangeId = rec.rangePreset || 'melee';
+  // 子职业：没填就按职业推一个（同一个职业里第一个分支），保证下拉框永远有选中项
+  const startProfession = rec.profession || 'WARRIOR';
+  const subsOf = (prof) => Object.keys(SUB_RANGES).filter((id) => (SUB_PROFESSION[id] || '') === prof);
+  const startSub = rec.subProfessionId
+    || subsOf(startProfession)[0] || '';
+  // 范围模式：老记录里只有 rangePreset，就当成 preset；新记录带 rangeMode
+  const rangeMode = rec.rangeMode
+    || (rec.rangeGrid && !rec.rangePreset ? 'custom' : (rec.subProfessionId ? 'sub' : 'preset'));
+  // 自己画的格子：rangeGrid 存的是「相对干员自己的偏移」（[0,0] = 自己那格），
+  // 画布用的是绝对格子坐标，两者差一个 GRID_SELF 偏移。
+  const customCells = Array.isArray(rec.rangeGrid) && rec.rangeGrid.length
+    ? rec.rangeGrid.map(([r, c]) => `${r + GRID_SELF.r},${c + GRID_SELF.c}`)
+    : [];
 
   const statsHtml = STATS.map(([k, label, def]) => fieldRow(k, label, 'number',
     stats[k] !== undefined ? stats[k] : def)).join('');
@@ -92,7 +125,11 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
       <div class="ops__grid">
         ${fieldRow('name', '名字（必填）', 'text', rec.name || '')}
         ${fieldRow('appellation', '英文名', 'text', rec.appellation || '')}
-        ${selectRow('profession', '职业', PROFESSIONS, rec.profession || 'WARRIOR')}
+        ${selectRow('profession', '职业', PROFESSIONS, startProfession)}
+        <div class="ops__field"><label for="c-subProfessionId">子职业（分支）</label>
+          <select id="c-subProfessionId" data-field="subProfessionId">${subsOf(startProfession).map((id) =>
+            `<option value="${esc(id)}"${startSub === id ? ' selected' : ''}>${esc(subProfessionCn(id))} · ${esc(id)}</option>`).join('')}</select>
+        </div>
         ${selectRow('position', '位置', POSITIONS, rec.position || 'MELEE')}
         ${selectRow('dmgType', '伤害类型', DMG_TYPES, rec.dmgType || 'PHYSICAL')}
         ${fieldRow('rarity', '星级（1-6）', 'number', rec.rarity || 4)}
@@ -104,11 +141,17 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
 
       <h5>攻击范围</h5>
       <div class="ops__grid">
-        <div class="ops__field"><label for="c-rangePreset">范围模板</label>
+        <div class="ops__field"><label for="c-rangeMode">怎么定</label>
+          <select id="c-rangeMode" data-field="rangeMode">${RANGE_MODES.map(([id, nm]) =>
+            `<option value="${esc(id)}"${rangeMode === id ? ' selected' : ''}>${esc(nm)}</option>`).join('')}</select>
+        </div>
+        <div class="ops__field" data-range-panel="preset"><label for="c-rangePreset">范围模板</label>
           <select id="c-rangePreset" data-field="rangePreset">${RANGE_PRESETS.map((r) =>
             `<option value="${esc(r.id)}"${rangeId === r.id ? ' selected' : ''}>${esc(r.label)}</option>`).join('')}</select>
         </div>
       </div>
+      <p class="ops__hint" data-range-note></p>
+      <div class="ops__rangegrid" data-range-canvas hidden></div>
 
       <h5>技能（可选，最多 3 个）</h5>
       <div data-skills></div>
@@ -122,6 +165,81 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
 
   const skillsHost = mount.querySelector('[data-skills]');
   let skillCount = 0;
+
+  /* ---- 攻击范围：三种给法的联动 ------------------------------------------------------------ */
+
+  const canvas = mount.querySelector('[data-range-canvas]');
+  const note = mount.querySelector('[data-range-note]');
+  const rangeModeSel = mount.querySelector('[data-field="rangeMode"]');
+  const presetPanel = mount.querySelector('[data-range-panel="preset"]');
+  let picked = new Set(customCells);
+
+  /** 当前选中的子职业范围（没子职业就给本格）。 */
+  function currentSubRange() {
+    const sub = mount.querySelector('[data-field="subProfessionId"]')?.value || '';
+    const cells = subRange(sub);
+    return cells.length ? cells : [[0, 0]];
+  }
+
+  /** 把格子画成 7×5 的可点击网格。 */
+  function paintCanvas() {
+    if (!canvas) return;
+    const cells = [];
+    for (let r = 0; r < GRID_ROWS; r += 1) {
+      for (let c = 0; c < GRID_COLS; c += 1) {
+        const self = r === GRID_SELF.r && c === GRID_SELF.c;
+        const on = self || picked.has(`${r},${c}`);
+        cells.push(`<button type="button" class="ops__cell${on ? ' is-on' : ''}${self ? ' is-self' : ''}"
+          data-cell="${r},${c}" aria-pressed="${on ? 'true' : 'false'}"
+          title="${self ? '干员自己站的位置' : `第 ${r + 1} 行第 ${c + 1} 列`}">${self ? '干员' : ''}</button>`);
+      }
+    }
+    canvas.innerHTML = cells.join('');
+  }
+
+  /** 按模式切换面板的可见性，并把提示写成人话。 */
+  function syncRangeUi() {
+    const mode = rangeModeSel?.value || 'sub';
+    if (presetPanel) presetPanel.hidden = mode !== 'preset';
+    if (canvas) canvas.hidden = mode !== 'custom';
+    if (note) {
+      if (mode === 'sub') {
+        const cells = currentSubRange();
+        note.textContent = `沿用子职业范围：${cells.length} 格。改子职业会跟着变。`;
+      } else if (mode === 'preset') {
+        note.textContent = '模板范围：本格 / 前方三格 / 远程十字 / 前方九格 / 治疗范围。';
+      } else {
+        note.textContent = '点格子画出攻击范围（干员自己那格固定包含）。';
+      }
+    }
+    if (mode === 'custom') paintCanvas();
+  }
+
+  /** 子职业下拉框按当前职业重建（切职业时不能留着别的职业的分支）。 */
+  function syncSubSelect() {
+    const prof = mount.querySelector('[data-field="profession"]')?.value || 'WARRIOR';
+    const sel = mount.querySelector('[data-field="subProfessionId"]');
+    if (!sel) return;
+    const keep = sel.value;
+    const ids = subsOf(prof);
+    sel.innerHTML = ids.map((id) =>
+      `<option value="${esc(id)}">${esc(subProfessionCn(id))} · ${esc(id)}</option>`).join('');
+    if (ids.includes(keep)) sel.value = keep;
+    else if (ids.length) sel.value = ids[0];
+    syncRangeUi();
+  }
+
+  canvas?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cell]');
+    if (!btn) return;
+    const [r, c] = btn.dataset.cell.split(',').map(Number);
+    if (r === GRID_SELF.r && c === GRID_SELF.c) return;      // 自己那格不给取消
+    const key = btn.dataset.cell;
+    if (picked.has(key)) picked.delete(key); else picked.add(key);
+    paintCanvas();
+  });
+
+  syncRangeUi();
 
   function addSkill(sk = null) {
     if (skillCount >= 3) return;
@@ -174,7 +292,21 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
       const name = get('name');
       if (!name) { setStatus('请先填名字', true); return; }
 
-      const range = (RANGE_PRESETS.find((r) => r.id === get('rangePreset')) || RANGE_PRESETS[0]).cells;
+      // 范围按当前模式算：沿用子职业 / 模板 / 自己画
+      const mode = get('rangeMode') || 'sub';
+      let range;
+      if (mode === 'sub') {
+        range = currentSubRange();
+      } else if (mode === 'custom') {
+        // 画布坐标 → 相对干员的偏移
+        range = [...picked].map((k) => k.split(',').map(Number))
+          .filter(([r, c]) => !(r === GRID_SELF.r && c === GRID_SELF.c))
+          .map(([r, c]) => [r - GRID_SELF.r, c - GRID_SELF.c]);
+        range.unshift([0, 0]);
+        if (range.length < 2) { setStatus('自己画的范围至少要再点一格', true); return; }
+      } else {
+        range = (RANGE_PRESETS.find((r) => r.id === get('rangePreset')) || RANGE_PRESETS[0]).cells;
+      }
 
       const outStats = {};
       for (const [k] of STATS) {
@@ -206,6 +338,9 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
         rarity: Number(get('rarity')) || 4,
         tier: Number(get('tier')) || 4,
         profession: get('profession') || 'WARRIOR',
+        subProfessionId: get('subProfessionId') || null,
+        subProfessionName: subProfessionCn(get('subProfessionId') || '') || null,
+        rangeMode: mode,
         position: get('position') || 'MELEE',
         dmgType: get('dmgType') || 'PHYSICAL',
         status: rec.status || { phase: 2, level: 80, skillLevel: 10, equipLevel: 3 },
@@ -231,10 +366,14 @@ export function renderCustomEditor(mount, { record = null, onSaved, onCancel } =
     }
   });
 
-  // 范围模板变化时给个直观提示
+  // 下拉框联动：换职业要重建子职业列表，换子职业/模式要刷新范围面板
   mount.addEventListener('change', (e) => {
-    if (e.target.dataset.field !== 'rangePreset') return;
-    setStatus(`范围：${RANGE_PRESETS.find((r) => r.id === e.target.value)?.label || ''}`);
+    const field = e.target.dataset.field;
+    if (field === 'profession') { syncSubSelect(); return; }
+    if (field === 'subProfessionId' || field === 'rangeMode') { syncRangeUi(); return; }
+    if (field === 'rangePreset') {
+      setStatus(`范围：${RANGE_PRESETS.find((r) => r.id === e.target.value)?.label || ''}`);
+    }
   });
 }
 

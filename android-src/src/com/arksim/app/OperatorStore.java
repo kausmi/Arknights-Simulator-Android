@@ -38,7 +38,7 @@ import org.json.JSONObject;
 public final class OperatorStore {
 
     /** 认可的四个改动类别。 */
-    public static final String[] CATEGORIES = {"stats", "trait", "talents", "modules"};
+    public static final String[] CATEGORIES = {"loadout", "stats", "trait", "talents", "modules"};
 
     private final JSONObject nativeTable;
     private final JSONObject overrides;
@@ -121,6 +121,7 @@ public final class OperatorStore {
             } catch (Exception e) {
                 continue;
             }
+            applyLoadout(rec, patch.optJSONObject("loadout"));
             applyStats(rec, patch.optJSONObject("stats"));
             applyTrait(rec, patch.optJSONObject("trait"), "trait");
             applyTalents(rec, patch.optJSONObject("talents"));
@@ -145,11 +146,137 @@ public final class OperatorStore {
             return null;
         }
         OperatorStore helper = new OperatorStore(null, null);
+        helper.applyLoadout(copy, patch.optJSONObject("loadout"));
         helper.applyStats(copy, patch.optJSONObject("stats"));
         helper.applyTrait(copy, patch.optJSONObject("trait"), "trait");
         helper.applyTalents(copy, patch.optJSONObject("talents"));
         helper.applyModules(copy, patch.optJSONObject("modules"));
         return copy;
+    }
+
+    /**
+     * 出战配置（携带技能 / 携带模组 / 潜能 / 立绘版本）。
+     *
+     * 为什么单独一类：这四样不是「把某个数字改掉」，而是「从已有选项里挑一个」。
+     * 它们的实际效果都要动到记录里别的字段（stats / trait / skill），所以不能像 stats 那样直接盖值，
+     * 必须按数据里现成的 statsBase、modules[].attr、potDown 重新算一遍。
+     *
+     * 顺序是有讲究的：
+     *   ① 潜能先折 —— potDown 的叶子同时覆盖 stats 与 statsBase，是「基础值」；
+     *   ② 模组后叠 —— stats = statsBase + 模组 attr，顺序反了会叠错；
+     *   ③ 技能最后 —— 只换 skill 指针，与数值无关。
+     */
+    private void applyLoadout(JSONObject rec, JSONObject patch) {
+        if (patch == null || patch.length() == 0) return;
+        int potential = patch.optInt("potential", 0);
+        if (potential >= 1 && potential <= 6) applyPotential(rec, potential - 1);
+        Object mod = patch.opt("module");
+        if (mod instanceof String) applyModuleChoice(rec, (String) mod);
+        int idx = patch.optInt("skill", -1);
+        if (idx >= 0) applySkillChoice(rec, idx);
+        String art = patch.optString("art", "");
+        if (!art.isEmpty()) putSafe(rec, "artVariant", art);
+    }
+
+    /** 数据是满潜（rank 5）建的；从 rank 4 往下逐层覆盖叶子，落到目标 rank。 */
+    private void applyPotential(JSONObject rec, int rank) {
+        JSONObject down = rec.optJSONObject("potDown");
+        if (down == null) return;
+        for (int r = 4; r >= rank; r--) {
+            JSONObject step = down.optJSONObject(String.valueOf(r));
+            if (step == null) continue;
+            java.util.Iterator<String> ks = step.keys();
+            while (ks.hasNext()) {
+                String path = ks.next();
+                Object v = step.opt(path);
+                if (v == null) continue;
+                setDotted(rec, path, v);
+            }
+        }
+    }
+
+    /** 按点路径写一个标量。只覆盖已存在的对象，不凭空造结构（避免把记录写坏）。 */
+    private static void setDotted(JSONObject root, String path, Object value) {
+        String[] keys = path.split("\\.");
+        Object cur = root;
+        for (int i = 0; i < keys.length - 1; i++) {
+            if (!(cur instanceof JSONObject)) return;
+            cur = ((JSONObject) cur).opt(keys[i]);
+        }
+        if (cur instanceof JSONObject) putSafe((JSONObject) cur, keys[keys.length - 1], value);
+    }
+
+    /**
+     * 换模组。
+     *
+     * "none" 表示不装 —— 此时 stats 回到 statsBase，职业特性回到 traitBase。
+     * 装某个模组时 stats = statsBase + 该模组 attr；特性优先用模组改写过的那份。
+     * 老数据没有 statsBase（143 条）的，就只改 module 标记与特性，数值不动 ——
+     * 宁可不重算，也不能拿「已含模组」的 stats 再叠一次 attr，那会直接叠爆。
+     */
+    private void applyModuleChoice(JSONObject rec, String moduleId) {
+        JSONArray mods = rec.optJSONArray("modules");
+        JSONObject none = new JSONObject();
+        putSafe(none, "id", "none");
+        putSafe(none, "name", "未装备模组");
+        putSafe(none, "type", "");
+        putSafe(none, "level", 0);
+        putSafe(none, "active", false);
+
+        if (moduleId.isEmpty() || moduleId.equals("none")) {
+            putSafe(rec, "module", none);
+            JSONObject base = rec.optJSONObject("statsBase");
+            if (base != null) putSafe(rec, "stats", copy(base));
+            JSONObject tb = rec.optJSONObject("traitBase");
+            if (tb != null) putSafe(rec, "trait", copy(tb));
+            return;
+        }
+        if (mods == null) return;
+        for (int i = 0; i < mods.length(); i++) {
+            JSONObject m = mods.optJSONObject(i);
+            if (m == null || !moduleId.equals(m.optString("uniEquipId", ""))) continue;
+
+            JSONObject mark = new JSONObject();
+            putSafe(mark, "id", moduleId);
+            putSafe(mark, "name", m.optString("name", moduleId));
+            putSafe(mark, "type", m.optString("typeName", ""));
+            putSafe(mark, "level", m.optInt("level", 3));
+            putSafe(mark, "active", true);
+            putSafe(rec, "module", mark);
+
+            JSONObject base = rec.optJSONObject("statsBase");
+            JSONObject attr = m.optJSONObject("attr");
+            if (base != null) {
+                JSONObject s = copy(base);
+                if (attr != null) {
+                    java.util.Iterator<String> ks = attr.keys();
+                    while (ks.hasNext()) {
+                        String k = ks.next();
+                        Object v = attr.opt(k);
+                        if (!(v instanceof Number)) continue;
+                        putSafe(s, k, s.optDouble(k, 0) + ((Number) v).doubleValue());
+                    }
+                }
+                putSafe(rec, "stats", s);
+            }
+            JSONObject to = m.optJSONObject("traitOverride");
+            if (to != null && to.optString("desc", "").length() > 0) {
+                JSONObject trait = rec.optJSONObject("trait");
+                JSONObject merged = trait == null ? new JSONObject() : copy(trait);
+                deepMerge(merged, to);
+                putSafe(rec, "trait", merged);
+            }
+            return;
+        }
+    }
+
+    /** 换携带技能：把 rec.skill 指向 skills[idx]（引擎只认单数那个 skill）。 */
+    private void applySkillChoice(JSONObject rec, int idx) {
+        JSONArray skills = rec.optJSONArray("skills");
+        if (skills == null) return;
+        JSONObject picked = skills.optJSONObject(idx);
+        if (picked == null) return;
+        putSafe(rec, "skill", copy(picked));
     }
 
     /** 基础数值：写进 stats；等级/阶段这类同时同步到 status。 */
@@ -294,6 +421,19 @@ public final class OperatorStore {
             } else if (v != null) {
                 putSafe(target, k, v);
             }
+        }
+    }
+
+    /**
+     * 深拷贝（org.json 的 JSONObject(String) 会抛 JSONException，到处 try/catch 太吵）。
+     * 失败时返回空对象而不是 null —— 调用点都是「拿拷贝去改」，空对象最坏是改成空，不会 NPE。
+     */
+    private static JSONObject copy(JSONObject src) {
+        if (src == null) return new JSONObject();
+        try {
+            return new JSONObject(src.toString());
+        } catch (Exception e) {
+            return new JSONObject();
         }
     }
 

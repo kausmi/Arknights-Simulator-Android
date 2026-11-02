@@ -51,6 +51,21 @@ public final class HttpService {
     private final File libraryFile;
     /** 官方牌库的解析缓存。 */
     private volatile JSONObject libraryCache;
+    /**
+     * data/chess.json —— 前端 loadAll('chess') 真正用的那份，269 条，含塔露拉（char_1503_talula）、
+     * 维娜、结城理这些 aue 表与官方牌库都没有的自设/联动干员。编辑器要能改到它们，
+     * 就必须把它也并进来。
+     */
+    private final File chessFile;
+    /** chess.json 的解析缓存。 */
+    private volatile JSONObject chessCache;
+    /**
+     * data/local-skins.json —— extract_skins.py 解出来的皮肤索引（charId -> [{id,name,art,artB}]）。
+     *
+     * 只在玩家点过「解这个干员的皮肤」之后才存在；不存在就说明一套皮肤都没解，
+     * 详情页的立绘下拉只剩精一 / 精二两张。
+     */
+    private final File skinsFile;
     /** 玩家改过的干员数值（覆盖层；不存在表示一个都没改）。 */
     private final File overridesFile;
     /** 自定义干员表（玩家自己造的，实验功能）。 */
@@ -70,6 +85,8 @@ public final class HttpService {
         this.levelsDir = new File(root, "content/levels");
         this.operatorsFile = new File(root, "data/aue-operators.json");
         this.libraryFile = new File(root, "data/operator-library.json");
+        this.chessFile = new File(root, "data/chess.json");
+        this.skinsFile = new File(root, "data/local-skins.json");
         this.overridesFile = new File(root, "data/operator-overrides.json");
         // 玩家自己造的干员（实验功能）：单独一份，不混进官方表，也不进覆盖表。
         // 服务端在 /data/aue-operators.json 里把它们合并进去，前端就当成普通干员用。
@@ -201,6 +218,21 @@ public final class HttpService {
         }
         if (rawPath.equals("/data/aue-operators.json")) {
             byte[] body = effectiveOperatorsJson().getBytes(StandardCharsets.UTF_8);
+            writeResponse(out, 200, "application/json; charset=utf-8", body, method.equals("HEAD"), null);
+            return;
+        }
+        // chess.json 才是沙盒里「真正出战的那份表」（前端 loadAll('chess') 加载它），
+        // 里面还有塔露拉这类官方没出的自设干员。改了数值必须让这份也跟着变，
+        // 否则编辑器改完、进沙盒发现根本没生效。
+        if (rawPath.equals("/data/chess.json")) {
+            byte[] body = effectiveChessJson().getBytes(StandardCharsets.UTF_8);
+            writeResponse(out, 200, "application/json; charset=utf-8", body, method.equals("HEAD"), null);
+            return;
+        }
+        // 玩家在详情页选的立绘 / 皮肤 + 本机解出来的皮肤索引。
+        // 合成一份给前端一步拿全，省得它先读覆盖表、再按 chessId→charId 自己换算。
+        if (rawPath.equals("/data/operator-art.json")) {
+            byte[] body = operatorArtJson().getBytes(StandardCharsets.UTF_8);
             writeResponse(out, 200, "application/json; charset=utf-8", body, method.equals("HEAD"), null);
             return;
         }
@@ -409,6 +441,28 @@ public final class HttpService {
         return cached;
     }
 
+    /**
+     * data/chess.json（带缓存）。
+     *
+     * 这份是「扁平表」——顶层直接是 chessId -> 记录，没有 operators 包一层。
+     * 前端 data.loadAll('chess') 读的就是它，所以编辑器要对齐到「实际在用的那份」。
+     */
+    private JSONObject chessNative() {
+        JSONObject cached = chessCache;
+        if (cached != null) return cached;
+        try {
+            cached = new JSONObject(readText(chessFile));
+        } catch (Exception e) {
+            try {
+                cached = new JSONObject("{}");
+            } catch (Exception ignored) {
+                cached = null;
+            }
+        }
+        chessCache = cached;
+        return cached;
+    }
+
     private JSONObject readOverrides() {
         if (!overridesFile.isFile()) {
             try {
@@ -513,7 +567,20 @@ public final class HttpService {
     private JSONObject mergedOperators() {
         JSONObject out = new JSONObject();
 
-        // 先铺官方牌库（面大：202 位真干员）
+        // ① 先铺 chess.json（前端真正加载的那份，269 条，含塔露拉 / 自设干员这些
+        //    aue 与牌库都没有的；键是 chess_char_5_99_talula_a 这类）。
+        JSONObject chess = chessNative();
+        if (chess != null) {
+            java.util.Iterator<String> it = chess.keys();
+            while (it.hasNext()) {
+                String id = it.next();
+                JSONObject rec = chess.optJSONObject(id);
+                if (rec == null) continue;
+                put(out, id, rec);
+            }
+        }
+
+        // ② 再铺官方牌库（面大：202 位真干员），覆盖 chess 里的同名键。
         JSONObject lib = libraryNative();
         JSONObject libOps = lib != null ? lib.optJSONObject("operators") : null;
         if (libOps != null) {
@@ -526,7 +593,10 @@ public final class HttpService {
             }
         }
 
-        // 再盖 aue 表（数量 259，含联动干员与模拟器侧字段）
+        // ③ 最后盖 aue 表（259 条，含联动干员与模拟器侧字段），优先级最高。
+        //    这个顺序与前端 operator-library.js 的
+        //    `operators: {...native.operators, ...local.operators}` 完全一致，
+        //    所以编辑器里看到的数值就是实际游玩用的数值。
         JSONObject aue = operatorsNative();
         JSONObject aueOps = aue != null ? aue.optJSONObject("operators") : null;
         if (aueOps != null) {
@@ -562,6 +632,105 @@ public final class HttpService {
         }
         if (effective.opt("version") == null) put(effective, "version", 1);
         return effective.toString();
+    }
+
+    /**
+     * chess.json + 玩家覆盖 -> 前端 data.loadAll('chess') 实际拿到的那份（/data/chess.json）。
+     *
+     * chess.json 顶层就是扁平表。这里对每个键查覆盖表（按 chessId 与 charId 两种键都试），
+     * 命中就用 OperatorStore.patchRecord 叠上去，所以改了塔露拉的攻击力，进沙盒立刻生效。
+     */
+    /**
+     * /data/operator-art.json → {"picks":{"<charId>":"e0|e2|<skinId>"},"skins":{"<charId>":[{id,name,art,artB}]}}
+     *
+     * 两件事一次给全：
+     *   picks —— 玩家在详情页「立绘 / 皮肤」里选的那张，存在覆盖表的 loadout.art 上。
+     *            覆盖表按 chessId 存，而前端画图是按 charId 取的，所以这里要顺着
+     *            chess → 牌库 → aue 三张表把 chessId 翻成 charId 再吐出去。
+     *   skins —— 本机 skinpack 解出来的皮肤索引（extract_skins.py 写的 local-skins.json）。
+     *
+     * 前端 asset-urls.js 的 useArtState() 一次吃下这份，手牌头像 / 详情立绘就都跟着变。
+     */
+    private String operatorArtJson() {
+        JSONObject out = new JSONObject();
+        JSONObject picks = new JSONObject();
+        OperatorStore st = operatorStore();
+        JSONObject edits = st.edits();
+        java.util.Iterator<String> keys = edits.keys();
+        while (keys.hasNext()) {
+            String id = keys.next();
+            JSONObject part = edits.optJSONObject(id);
+            JSONObject loadout = part == null ? null : part.optJSONObject("loadout");
+            if (loadout == null) continue;
+            String art = loadout.optString("art", "");
+            if (art.isEmpty()) continue;
+            String charId = charIdOf(id);
+            if (charId != null) put(picks, charId, art);
+        }
+        put(out, "picks", picks);
+
+        JSONObject skins = new JSONObject();
+        if (skinsFile.isFile()) {
+            try {
+                JSONObject idx = new JSONObject(readText(skinsFile));
+                JSONObject chars = idx.optJSONObject("chars");
+                if (chars != null) skins = chars;
+            } catch (Exception ignored) {
+            }
+        }
+        put(out, "skins", skins);
+        return out.toString();
+    }
+
+    /** chessId / aueId → charId，三张表都查一遍；查不到返回 null。 */
+    private String charIdOf(String id) {
+        JSONObject chess = chessNative().optJSONObject(id);
+        if (chess != null) {
+            String c = chess.optString("charId", "");
+            if (!c.isEmpty()) return c;
+        }
+        JSONObject lib = libraryNative().optJSONObject("operators");
+        JSONObject lrec = lib == null ? null : lib.optJSONObject(id);
+        if (lrec != null) {
+            String c = lrec.optString("charId", "");
+            if (!c.isEmpty()) return c;
+        }
+        JSONObject aue = operatorsNative().optJSONObject("operators");
+        JSONObject arec = aue == null ? null : aue.optJSONObject(id);
+        if (arec != null) {
+            String c = arec.optString("charId", "");
+            if (!c.isEmpty()) return c;
+        }
+        // 本身就是 charId 的情况（自定义干员可能这样存）
+        if (id.startsWith("char_")) return id;
+        return null;
+    }
+
+    private String effectiveChessJson() {
+        JSONObject chess = chessNative();
+        if (chess == null) return "{}";
+        JSONObject overrides = readOverrides();
+        JSONObject ovs = overrides != null ? overrides.optJSONObject("operators") : null;
+        JSONObject out = new JSONObject();
+        java.util.Iterator<String> it = chess.keys();
+        while (it.hasNext()) {
+            String id = it.next();
+            JSONObject rec = chess.optJSONObject(id);
+            if (rec == null) {
+                put(out, id, chess.opt(id));
+                continue;
+            }
+            JSONObject patch = null;
+            if (ovs != null) {
+                patch = ovs.optJSONObject(id);
+                if (patch == null) {
+                    String cid = rec.optString("charId", "");
+                    if (!cid.isEmpty()) patch = ovs.optJSONObject(cid);
+                }
+            }
+            put(out, id, patch == null ? rec : OperatorStore.patchRecord(rec, patch));
+        }
+        return out.toString();
     }
 
     /**
@@ -1039,8 +1208,34 @@ public final class HttpService {
             sendFile(method, f, headers, out);
             return;
         }
+        // 图片缺失时回一张灰底剪影，而不是 404。
+        // data/assets.json 登记的是「官方客户端全量素材」的路径，本机能提取到的只有
+        // chararts/ 里真实存在的 bundle；阿米娅的老 id（char_002_amiya）、自设干员
+        // （char_1503_talula 等）根本没有对应 bundle，文件不存在是常态。
+        // <img> 收到 404 会画「图片损坏」，所以这里回 200 的占位 SVG。
+        if (isImagePath(pathname)) {
+            writeResponse(out, 200, "image/svg+xml; charset=utf-8",
+                    PLACEHOLDER_SVG.getBytes(StandardCharsets.UTF_8),
+                    "HEAD".equals(method), "Cache-Control: no-store\r\n");
+            return;
+        }
         notFound(out);
     }
+
+    /** 只对图片扩展名回占位图；脚本 / 样式 / JSON 仍然是 404。 */
+    private static boolean isImagePath(String pathname) {
+        String lower = pathname.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+                || lower.endsWith(".webp") || lower.endsWith(".gif") || lower.endsWith(".avif")
+                || lower.endsWith(".svg") || lower.endsWith(".ico");
+    }
+
+    /** 灰色人形剪影（与前端 asset-urls.js 的 FD_AVATAR 同款）。 */
+    private static final String PLACEHOLDER_SVG =
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='xMidYMid slice'>"
+            + "<rect width='100' height='100' fill='#1c2024'/>"
+            + "<circle cx='50' cy='37' r='15' fill='#3a4046'/>"
+            + "<path d='M17 100c0-18 14-31 33-31s33 13 33 31z' fill='#3a4046'/></svg>";
 
     private void sendFile(String method, File file, Map<String, String> headers,
                           OutputStream out) throws IOException {

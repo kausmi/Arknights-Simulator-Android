@@ -239,6 +239,8 @@ def main():
                 ]
                 # 默认皮肤：名字与 charId 相同的那套（游戏里的基础立绘）
                 rec['defaultSkin'] = cid if cid in skins else (rec['skins'][0]['name'] if rec['skins'] else None)
+                print(f'PROGRESS {i}/{len(roster)} skinpack/{cid}.ab')
+                sys.stdout.flush()
                 print(f'[{i}/{len(roster)}] {cid}: {len(rec["skins"])} 套皮肤')
         index[cid] = rec
 

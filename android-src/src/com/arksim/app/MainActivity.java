@@ -45,6 +45,10 @@ public class MainActivity extends Activity {
     public static final int PORT = 3100;
     private static final String PREFS = "arksim";
     private static final String KEY_ORIENTATION = "battleOrientation";
+    /** 上次成功提取时记下的方舟资源指纹，用来判断「游戏更新了没」。 */
+    private static final String KEY_ARK_FP = "arkAssetFingerprint";
+    /** 用户在这一版里点过「稍后再说」的那次提醒，按指纹区分，游戏一更新就重新提醒。 */
+    private static final String KEY_ARK_FP_SNOOZE = "arkAssetSnoozeFp";
 
     private WebView web;
     private TextView status;
@@ -441,6 +445,60 @@ public class MainActivity extends Activity {
             return "已开始提取 " + f.label + " 的资源";
         }
 
+        /**
+         * 解一个干员的皮肤（详情页把下拉拉开时调）。
+         *
+         * <p>为什么不在主提取里一起解：全量 434 个 skinpack 约 11 分钟、多占 160MB，
+         * 而绝大多数干员用户一辈子不换皮肤。这里只解当前这位，1~2 秒出结果，
+         * 解完前端重新拉一次 /data/local-skins.json 就能看到新皮肤。
+         *
+         * <p>返回一行状态文字（前端直接 toast）。
+         */
+        @JavascriptInterface
+        public String extractSkins(String charId) {
+            if (charId == null || !charId.matches("^char_[0-9A-Za-z_]+$")) return "干员 id 不对";
+            if (!ShizukuBridge.alive()) return "Shizuku 没在跑，先去设置里授权";
+            if (!ShizukuBridge.granted()) {
+                ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
+                }));
+                return "已弹出 Shizuku 授权框";
+            }
+            if (!ShizukuBridge.arkDirReadable(true)) return "读不到方舟资源目录";
+            new Thread(() -> {
+                try {
+                    File rt = PythonInstaller.ensure(MainActivity.this, MainActivity.this::step);
+                    Extractor ex = new Extractor(rt, webDir);
+                    File py = new File(rt, "py");
+                    File exDir = new File(rt, "extract");
+                    String libPath = py.getAbsolutePath() + ":" + new File(py, "lib").getAbsolutePath();
+                    String[] env = {
+                            "PYTHONHOME=" + py.getAbsolutePath(),
+                            "LD_LIBRARY_PATH=" + libPath,
+                            "PYTHONPATH=" + exDir.getAbsolutePath(),
+                            "HOME=" + py.getAbsolutePath(),
+                            "PATH=/system/bin:/system/xbin",
+                            "PYTHONDONTWRITEBYTECODE=1",
+                    };
+                    ExtractTask task = ExtractTask.get();
+                    task.begin();
+                    task.phase(ExtractTask.Phase.RUNNING, "正在解 " + charId + " 的皮肤…");
+                    int code = ex.extractSkins(py, exDir, env, task::line, charId);
+                    task.finish(code);
+                    ui.post(() -> toastOnPage(code == 0 ? "皮肤已解好" : "皮肤解包失败（退出码 " + code + "）"));
+                } catch (Throwable t) {
+                    ExtractTask.get().fail(t.toString());
+                    ui.post(() -> toastOnPage("皮肤解包失败：" + t));
+                }
+            }, "arksim-skin").start();
+            return "正在解 " + charId + " 的皮肤…";
+        }
+
+        /** 皮肤索引是否已经解过（前端据此决定按钮文案）。 */
+        @JavascriptInterface
+        public boolean skinsReady() {
+            return new Extractor(runtimeDir(), webDir).hasSkins();
+        }
+
         /** 提取是否已经有产物（manifest 存在即视为跑过）。 */
         @JavascriptInterface
         public boolean assetsReady() {
@@ -485,6 +543,48 @@ public class MainActivity extends Activity {
             return ShizukuBridge.flavorsJson();
         }
 
+        /**
+         * 资源要不要更新？—— 首次进入、游戏热更之后都要问一次。
+         *
+         * 判据三件事同时成立才算「该更新」：
+         *   1. Shizuku 通道能用（否则根本读不了方舟目录，提醒也没意义）
+         *   2. 从没提取过（ready=false）→ 首次进入
+         *   3. 现在方舟资源的指纹和上次提取时记下的不一样 → 游戏更新了
+         *
+         * 返回 {"need":bool,"reason":"first|updated|noready|","ready":bool,"bytes":n,
+         *       "snoozed":bool}。snoozed=true 表示用户已经对这一次说过「稍后再说」。
+         */
+        @JavascriptInterface
+        public String assetUpdateHint() {
+            boolean ready = new Extractor(runtimeDir(), webDir).hasOutput();
+            long bytes = assetsBytes();
+            boolean channel = ShizukuBridge.alive() && ShizukuBridge.granted();
+            String fp = channel ? ShizukuBridge.arkAssetFingerprint() : "";
+            SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
+            String lastFp = p.getString(KEY_ARK_FP, "");
+            String snoozeFp = p.getString(KEY_ARK_FP_SNOOZE, "");
+            String reason = "";
+            if (ShizukuBridge.alive() && ShizukuBridge.granted()) {
+                if (!ready) reason = "first";
+                else if (!fp.isEmpty() && !lastFp.isEmpty() && !fp.equals(lastFp)) reason = "updated";
+            }
+            boolean need = !reason.isEmpty();
+            boolean snoozed = need && !snoozeFp.isEmpty() && snoozeFp.equals(fp);
+            return "{\"need\":" + need + ",\"reason\":\"" + reason + "\""
+                    + ",\"ready\":" + ready + ",\"bytes\":" + bytes
+                    + ",\"snoozed\":" + snoozed
+                    + ",\"fingerprint\":\"" + quote(fp).replace("\"", "") + "\""
+                    + "}";
+        }
+
+        /** 用户点「稍后再说」：记住这一次的指纹，同一版本不再烦他；游戏一更新又会提醒。 */
+        @JavascriptInterface
+        public void suppressAssetHint() {
+            String fp = ShizukuBridge.alive() && ShizukuBridge.granted()
+                    ? ShizukuBridge.arkAssetFingerprint() : "";
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_ARK_FP_SNOOZE, fp).apply();
+        }
+
         /** 提取任务快照（网页轮询它画进度）。 */
         @JavascriptInterface
         public String extractStatus() {
@@ -499,7 +599,10 @@ public class MainActivity extends Activity {
               .append("\"endedAt\":").append(t.endedAt()).append(',')
               .append("\"ready\":").append(new Extractor(runtimeDir(), webDir).hasOutput()).append(',')
               .append("\"bytes\":").append(bytes).append(',')
-              .append("\"tail\":").append(quote(t.tail(2400)))
+              .append("\"tail\":").append(quote(t.tail(2400))).append(',')
+              .append("\"percent\":").append(Math.round(t.percent() * 1000) / 10.0).append(',')
+              .append("\"step\":").append(quote(t.step().label)).append(',')
+              .append("\"eta\":").append(t.etaSeconds())
               .append('}');
             return sb.toString();
         }
@@ -582,6 +685,7 @@ public class MainActivity extends Activity {
                 task.begin();
                 step("正在释放 python 运行时（首次较慢）…");
                 task.phase(ExtractTask.Phase.PREPARING, "释放 python 运行时…");
+                task.step(ExtractTask.Step.PREPARE, "释放 python 运行时…");
                 File rt = PythonInstaller.ensure(this, this::step);
                 task.phase(ExtractTask.Phase.RUNNING, "正在读取方舟资源…");
                 step("正在提取《明日方舟》资源（Shizuku 直读）…");
@@ -591,6 +695,7 @@ public class MainActivity extends Activity {
                     if (line.startsWith("done:")) ui.post(() -> status.setText(line));
                 });
                 task.finish(code);
+                if (code == 0) rememberAssetFingerprint();
                 if (notify) {
                     toastOnPage(code == 0
                             ? "资源提取完成"
@@ -601,6 +706,19 @@ public class MainActivity extends Activity {
                 if (notify) toastOnPage("提取失败：" + t);
             }
         }, "arksim-extract").start();
+    }
+
+    /** 提取成功后记下方舟资源的指纹，下次用它判断游戏有没有更新。 */
+    private void rememberAssetFingerprint() {
+        try {
+            final String fp = ShizukuBridge.arkAssetFingerprint();
+            if (fp == null || fp.isEmpty()) return;
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putString(KEY_ARK_FP, fp)
+                    .remove(KEY_ARK_FP_SNOOZE)
+                    .apply();
+        } catch (Throwable ignored) {
+        }
     }
 
     /**

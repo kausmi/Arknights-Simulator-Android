@@ -12,6 +12,23 @@ export const portraitFrame = (charId) => OPERATOR_ILLUSTRATIONS[charId] || null;
 
 export function useAssets(a) { store = a; }
 
+// 玩家在「干员详情」里给某位干员选的立绘（覆盖表的 loadout.art）：
+//   'e0' 精一 / 'e2' 精二 / 其它 = skinpack 解出来的皮肤 id。
+// 皮肤索引来自 /data/local-skins.json（extract_skins.py 写），选中项来自 /data/operator-art.json。
+let artPicks = {};
+let artSkins = {};
+export function useArtState(next) {
+  if (!next || typeof next !== 'object') return;
+  if (next.picks && typeof next.picks === 'object') artPicks = next.picks;
+  if (next.skins && typeof next.skins === 'object') artSkins = next.skins;
+}
+const pickOf = (charId) => (charId && artPicks[charId]) || '';
+const skinOf = (charId, id) => {
+  const list = artSkins[charId];
+  if (!Array.isArray(list)) return null;
+  return list.find((s) => s && String(s.id) === String(id)) || null;
+};
+
 const FD_AVATAR = 'data:image/svg+xml;utf8,'
   + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>"
     + "<rect width='100' height='100' fill='#1c2024'/>"
@@ -22,9 +39,30 @@ export const FALLBACK = FD_AVATAR;
 
 const safe = (fn, ...a) => { try { return fn(...a) || null; } catch { return null; } };
 
+// 兜底：data/assets.json 里登记的路径是「官方客户端有、本机不一定有」的。
+// 提取只覆盖本机 chararts/ 里真实存在的 bundle，缺的那几个（阿米娅的老 id、自设干员等）
+// URL 是真字符串但文件 404 —— img 就显示成裂图。这里在捕获阶段统一接管：
+// 任何 <img> 加载失败都换成灰剪影，绝不出现「图片损坏」图标。
+if (typeof window !== 'undefined' && !window.__arksimImgGuard) {
+  window.__arksimImgGuard = true;
+  window.addEventListener('error', (e) => {
+    const t = e.target;
+    if (!t || t.tagName !== 'IMG' || t.dataset.fallbackApplied) return;
+    t.dataset.fallbackApplied = '1';
+    t.src = FD_AVATAR;
+  }, true);
+}
+
 export function avatar(charId) {
   if (!store || !charId) return FD_AVATAR;
   if (charId.startsWith('token_')) return tokenIcon(charId);
+  const pick = pickOf(charId);
+  // 选了皮肤就用皮肤的半身图当头像（方形框里 object-fit 自动裁），没有半身退回全身。
+  if (pick && pick !== 'e0' && pick !== 'e2') {
+    const sk = skinOf(charId, pick);
+    if (sk) return sk.artB || sk.art || FD_AVATAR;
+  }
+  if (pick === 'e2') return safe(store.avatar, charId, { e2: true }) || safe(store.avatar, charId) || FD_AVATAR;
   return safe(store.avatar, charId) || safe(store.portrait, charId) || FD_AVATAR;
 }
 
@@ -32,10 +70,19 @@ export function tokenIcon(tokenId) {
   return store ? safe(store.tokenAvatar, tokenId) || FD_AVATAR : FD_AVATAR;
 }
 
-/** 完整立绘优先，其次精二半身图。 */
+/** 完整立绘优先，其次精二半身图；玩家在详情页选了立绘/皮肤时以选择为准。 */
 export function portrait(charId) {
   if (!store || !charId) return FD_AVATAR;
   if (charId.startsWith('token_')) return tokenIcon(charId);
+  const pick = pickOf(charId);
+  if (pick && pick !== 'e0' && pick !== 'e2') {
+    const sk = skinOf(charId, pick);
+    if (sk) return sk.art || sk.artB || FD_AVATAR;
+  }
+  if (pick === 'e0') {
+    return safe(store.portrait, charId, { e2: false }) || safe(store.illust, charId, { e2: false })
+      || safe(store.avatar, charId) || FD_AVATAR;
+  }
   if (OPERATOR_ILLUSTRATIONS[charId]) return OPERATOR_ILLUSTRATIONS[charId].url;
   const illustration = safe(store.illust, charId, { e2: true });
   if (illustration) return illustration;

@@ -45,6 +45,14 @@ public final class Extractor {
     private static final File TMP_OUT = new File("/data/local/tmp/arksim-out");
 
     /**
+     * 整条提取链路上是否顺带解全量皮肤。
+     *
+     * 默认 false：全量 434 个 skinpack 约 11 分钟、多占约 160MB，而绝大多数人一辈子
+     * 只看精一精二两张立绘。皮肤的入口是详情页的下拉，点了才解（extractSkins(id)）。
+     */
+    private static final boolean WANT_SKINS = false;
+
+    /**
      * 版本戳文件名。
      *
      * ⚠️ 戳**不能**放在 STAGE 里面。STAGE 是 shell 身份建的（shell:shell 0755），
@@ -154,6 +162,7 @@ public final class Extractor {
         runShell(new String[]{"sh", "-c", "mkdir -p '" + TMP_OUT.getAbsolutePath() + "'"}, cb);
 
         // ── 第一步：棋盘 / UI / 弹道 / 模块这几类美术 ─────────────────
+        ExtractTask.get().step(ExtractTask.Step.MAP, "正在读取棋盘与界面美术…");
         List<String> cmd = new ArrayList<>();
         cmd.add(pyBin.getAbsolutePath());
         cmd.add(new File(ex, "extract.py").getAbsolutePath());
@@ -181,6 +190,7 @@ public final class Extractor {
         // ⚠️ 后两步失败**不能**让整次提取判失败。用户真正要的是「棋盘能显示」，
         // 干员名单和立绘是加分项；任何一步抛异常都把已经解出来的美术一起废掉，
         // 体验上就是「明明等了很久结果告诉我失败了」。所以这里吞掉异常，只在日志里留痕。
+        ExtractTask.get().step(ExtractTask.Step.ROSTER, "正在扫描干员名单…");
         try {
             int roster = readRoster(py, ex, env, cb);
             if (roster != 0) cb.onLine("warn: 干员名单提取退出码 " + roster + "（不影响棋盘美术）");
@@ -192,6 +202,7 @@ public final class Extractor {
         // 网页的 data/assets.json 给每个干员登记了
         // /assets/char/{avatar,portrait,illust}/<id>[_1|_2].png，但这些目录原先根本不存在，
         // 于是所有人都是灰剪影。这里从 chararts/<charId>.ab 把 Texture2D 解出来按登记路径写。
+        ExtractTask.get().step(ExtractTask.Step.ART, "正在解干员立绘…");
         try {
             int art = extractOperatorArt(py, ex, env, cb);
             if (art != 0) cb.onLine("warn: 干员立绘提取退出码 " + art + "（不影响棋盘美术）");
@@ -199,7 +210,25 @@ public final class Extractor {
             cb.onLine("warn: 干员立绘提取失败 — " + e);
         }
 
+        // ── 第四步：干员皮肤（skinpack） ───────────────────────────
+        // 精一 / 精二立绘在 chararts 里，**官方时装只在 skinpack 里**。
+        // 实测 20 个干员约 32 秒、每个约 370KB，全量 434 个约 11 分钟 / 160MB，
+        // 所以默认**不跑**：只有用户第一次在详情页里点了「皮肤」才按需解一个干员。
+        // （见 extractSkins(charId)：同样的脚本，--only 限定一个 bundle，约 1~2 秒。）
+        ExtractTask.get().step(ExtractTask.Step.SKIN, "正在检查皮肤索引…");
+        if (WANT_SKINS) {
+            try {
+                int sk = extractSkins(py, ex, env, cb, null);
+                if (sk != 0) cb.onLine("warn: 皮肤提取退出码 " + sk + "（不影响其它美术）");
+            } catch (Exception e) {
+                cb.onLine("warn: 皮肤提取失败 — " + e);
+            }
+        } else {
+            cb.onLine("skip: 皮肤索引按需解包（详情页点「皮肤」时才解，全量约 11 分钟）");
+        }
+
         // 全部写完，把暂存整体搬进私有目录并清空。
+        ExtractTask.get().step(ExtractTask.Step.DUMP, "正在写入应用目录…");
         drainTmp(cb);
 
         return 0;
@@ -278,6 +307,12 @@ public final class Extractor {
         return f.isFile() && f.length() > 0;
     }
 
+    /** 是否已经解过皮肤索引（详情页据此决定要不要显示「去解皮肤」按钮）。 */
+    public boolean hasSkins() {
+        File f = new File(webDir, "data/local-skins.json");
+        return f.isFile() && f.length() > 0;
+    }
+
     public File manifestFile() {
         return new File(webDir, "data/local-assets.json");
     }
@@ -299,6 +334,41 @@ public final class Extractor {
         pump(p.getInputStream(), cb);
         pump(p.getErrorStream(), cb);
         return p.waitFor();
+    }
+
+    /**
+     * 解皮肤：`--only <charId>` 时只解这一个干员的 skinpack（约 1~2 秒），
+     * 不传则全量（约 11 分钟）。
+     *
+     * <p>皮肤是「按需」的：详情页里把下拉拉开才调这个方法，用户没点就一个字节都不解。
+     * 索引写在 data/local-skins.json，前端读它列下拉。
+     */
+    public int extractSkins(File py, File ex, String[] env, Progress cb, String charId) throws Exception {
+        File script = new File(ex, "extract_skins.py");
+        if (!script.isFile()) {
+            if (cb != null) cb.onLine("skip: extract_skins.py 不在提取器目录里");
+            return 0;
+        }
+        // 皮肤脚本自己写 public/assets/skin 与 data/local-skins.json，
+        // 同样先落 shell 暂存，最后 tar 回流（不产生媒体可见文件）。
+        runShell(new String[]{"sh", "-c", "mkdir -p '" + TMP_OUT.getAbsolutePath() + "'"}, cb);
+        List<String> cmd = new ArrayList<>();
+        cmd.add(new File(py, "python3.14").getAbsolutePath());
+        cmd.add(script.getAbsolutePath());
+        cmd.add("--game");
+        cmd.add(ShizukuBridge.arkBundles());
+        cmd.add("--web");
+        cmd.add(TMP_OUT.getAbsolutePath());
+        if (charId != null && !charId.isEmpty()) {
+            cmd.add("--only");
+            cmd.add(charId);
+        }
+        Process p = ShizukuBridge.process(cmd.toArray(new String[0]), env, py.getAbsolutePath());
+        pump(p.getInputStream(), cb);
+        pump(p.getErrorStream(), cb);
+        int code = p.waitFor();
+        drainTmp(cb);
+        return code;
     }
 
     /** 调 read_roster.py：扫 skinpack 得到干员列表 + 小人索引。 */
