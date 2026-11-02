@@ -152,7 +152,7 @@
 
 ## 首次使用（Android）
 
-1. 安装 `Arknights-Simulator-Android.apk`。
+1. 安装 `Arknights-Simulator-Android-0.1.4.apk`（[最新 Release](https://github.com/kausmi/Arknights-Simulator-Android/releases/latest)）。
 2. 打开应用，等它把资源解到本地（首次较慢，之后秒开）。
 3. 主菜单会弹一次引导，按提示走一遍即可。
 4. **（可选）** 想要官方美术：设置 →「方舟本地资源」→ 点「开始提取」→ 按提示授权 Shizuku。

@@ -173,21 +173,36 @@ public final class Extractor {
             return code;
         }
 
-        // ── 第二步：干员列表 + 2D 小人索引 ───────────────────────────
+        // ── 第二步：干员列表（扫 skinpack/ 文件名，秒级） ──────────────
+        //
         // 源是 skinpack/（文件名就是 charId），不依赖解析数据表，
         // 游戏一出新干员就自动出现在列表里。
-        int roster = readRoster(py, ex, env, cb);
+        //
+        // ⚠️ 后两步失败**不能**让整次提取判失败。用户真正要的是「棋盘能显示」，
+        // 干员名单和立绘是加分项；任何一步抛异常都把已经解出来的美术一起废掉，
+        // 体验上就是「明明等了很久结果告诉我失败了」。所以这里吞掉异常，只在日志里留痕。
+        try {
+            int roster = readRoster(py, ex, env, cb);
+            if (roster != 0) cb.onLine("warn: 干员名单提取退出码 " + roster + "（不影响棋盘美术）");
+        } catch (Exception e) {
+            cb.onLine("warn: 干员名单提取失败 — " + e);
+        }
 
         // ── 第三步：干员头像 / 立绘 ─────────────────────────────────
         // 网页的 data/assets.json 给每个干员登记了
         // /assets/char/{avatar,portrait,illust}/<id>[_1|_2].png，但这些目录原先根本不存在，
         // 于是所有人都是灰剪影。这里从 chararts/<charId>.ab 把 Texture2D 解出来按登记路径写。
-        int art = extractOperatorArt(py, ex, env, cb);
+        try {
+            int art = extractOperatorArt(py, ex, env, cb);
+            if (art != 0) cb.onLine("warn: 干员立绘提取退出码 " + art + "（不影响棋盘美术）");
+        } catch (Exception e) {
+            cb.onLine("warn: 干员立绘提取失败 — " + e);
+        }
 
         // 全部写完，把暂存整体搬进私有目录并清空。
         drainTmp(cb);
 
-        return (roster != 0) ? roster : art;
+        return 0;
     }
 
     private int exec(File py, List<String> cmd, String[] env, Progress cb) throws Exception {
@@ -294,14 +309,19 @@ public final class Extractor {
             return 0;
         }
         File indexFile = new File(TMP_OUT, "operators-index.json");
-        File skins = new File(TMP_OUT, "local/operators");
 
+        // ⚠️ 这里**不能**传 --skins。
+        // 加了它 read_roster.py 会逐个 UnityPy.load 375 个 skinpack bundle 并解出 Spine
+        // 骨骼/图集/贴图，实测要跑几十分钟，而且 astc_encoder 在个别贴图上会直接
+        // SIGILL —— 在 subprocess 里表现为退出码 132（128+4）。用户看到的
+        // 「根本提取不了会弹退出码132」就是这个。
+        // 干员「名单」其实只要扫一遍 skinpack/ 的文件名，秒级就能完成；
+        // 2D 小人可以以后单独按需提，不该挡在整条提取链路上。
         String[] cmd = {
                 new File(py, "python3.14").getAbsolutePath(),
                 script.getAbsolutePath(),
                 "--game", ShizukuBridge.arkBundles(),
                 "--out", indexFile.getAbsolutePath(),
-                "--skins", skins.getAbsolutePath(),
         };
         Process p = ShizukuBridge.process(cmd, env, py.getAbsolutePath());
         pump(p.getInputStream(), cb);

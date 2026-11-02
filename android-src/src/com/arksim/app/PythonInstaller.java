@@ -23,12 +23,30 @@ import java.io.OutputStream;
  */
 public final class PythonInstaller {
 
-    /** 改动 assets/py 的内容时递增，触发重新释放。 */
-    private static final String VERSION = "py-2";
+    /**
+     * 版本戳不再手写，改成读 APK 里 assets/py.stamp（build.sh 打包时算出的 CRC32+字节数）。
+     *
+     * 手维护 "py-2" 那种常量的教训：改了 assets/ 里的脚本忘了 +1，手机上跑的就还是旧
+     * 脚本，报的错跟源码完全对不上。内容一变戳就变才是可靠的。
+     */
     private static final String PREFS = "arksim";
     private static final String KEY = "pyVersion";
 
     private PythonInstaller() {
+    }
+
+    /** 读 assets/py.stamp；读不到就返回永远不匹配的值（必然重新释放）。 */
+    private static String expectedVersion(Context ctx) {
+        try (InputStream in = ctx.getAssets().open("py.stamp")) {
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[128];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            String s = new String(bo.toByteArray(), "UTF-8").trim();
+            return s.isEmpty() ? "unknown" : s;
+        } catch (IOException e) {
+            return "unknown";
+        }
     }
 
     /** 返回运行时根目录（内含 py/ 与 extract/）。 */
@@ -38,6 +56,7 @@ public final class PythonInstaller {
         File dir = new File(base, "rt");
 
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        final String VERSION = expectedVersion(ctx);
         if (VERSION.equals(prefs.getString(KEY, null)) && new File(dir, "py/python3.14").isFile()) {
             return dir;
         }

@@ -6,7 +6,7 @@
 .ops {
   width: min(100%, 1180px);
   margin: 0 auto;
-  padding: calc(70px + var(--sa-t, 0px)) 28px calc(40px + var(--sa-b, 0px));
+  padding: calc(58px + var(--sa-t, 0px)) 28px calc(40px + var(--sa-b, 0px));
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -18,8 +18,10 @@
 .ops__head h1 { margin: 8px 0 6px; font-size: clamp(24px, 2.6vw, 38px); font-weight: 650; letter-spacing: .1em; }
 .ops__head h1 span { color: #edb563; }
 .ops__head p { margin: 0; color: #a0a69d; font-size: 13px; line-height: 1.7; max-width: 44em; }
-.ops__back { color: #d0d2c7; text-decoration: none; font-size: 13px; letter-spacing: .04em; padding: 8px 14px; border: 1px solid #c4c2ac33; border-radius: 8px; }
-.ops__back:hover { color: #9aead7; border-color: #9aead766; }
+/* 顶部操作条改用 /sandbox/menu.css 里的通用 .page__topbar / .page__back
+   （主页、教程页、本页三个 studio 页统一一套：固定左上角、永远压在最上层、
+   安全区吃 --sa-*）。原来这里自己写了一套，手机上标题一占两行就把按钮顶掉一半
+   （用户：「返回主界面的按钮已经飞到最上面去了，我差点都按不到」），已废弃。 */
 
 .ops__bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ops__search {
@@ -232,3 +234,20 @@
   color: #ffc600; font: 10.5px/1.5 var(--font-mono); letter-spacing: .02em;
 }
 .ops__now:empty { display: none; }
+
+/* ---- 「还原改动」页内选择条 -------------------------------------------------------------- */
+/* 原来用 window.prompt 让用户手打 1~5，手机上是原生输入框、每次弹键盘。 */
+.ops__revert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #ffc60055;
+  border-radius: 8px;
+  background: #1a1608cc;
+}
+.ops__revert[hidden] { display: none; }
+.ops__revert-hint { color: #ffc600; font-size: 13px; letter-spacing: .04em; margin-right: 2px; }
+.ops__revert .ops__mini { min-height: 32px; padding: 5px 11px; font-size: 12.5px; }
+.ops__revert-cancel { color: #8a948f; }

@@ -21,7 +21,11 @@
   <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
 </head>
 <body class="menu-screen help-screen">
-  <div class="menu__rail"><span>ARKNIGHTS / SIMULATOR</span><span>FIELD MANUAL</span></div>
+  <div class="page__topbar">
+    <a class="page__back" href="/studio/home.html">← 返回主菜单</a>
+    <span class="page__crumb">ARKNIGHTS / SIMULATOR</span>
+    <span class="page__tail">FIELD MANUAL</span>
+  </div>
   <main class="help">
     <header class="help__head">
       <div>
@@ -29,7 +33,6 @@
         <h1>教程与<span>帮助</span></h1>
         <p>从第一次进来到改数值、读资源，都在这里。也可以随时在设置里按「教程与帮助」回到本页。</p>
       </div>
-      <a class="help__back" href="/studio/home.html">← 返回主菜单</a>
     </header>
 
     <nav class="help__toc" aria-label="目录">

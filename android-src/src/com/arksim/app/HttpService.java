@@ -40,6 +40,17 @@ public final class HttpService {
     private final File levelsDir;
     /** 干员满配数值（原样，只读）。 */
     private final File operatorsFile;
+    /**
+     * 官方全干员牌库（原样，只读）。
+     *
+     * 为什么需要第二份表：data/aue-operators.json 是模拟器自己的「满配干员」表，只有 259 位
+     * （官方池里的 6 星只覆盖到 7 位联动干员，银灰/凯尔希这些全缺）；而沙盒前端实际使用的是
+     * data/operator-library.json（202 位官方干员，6 星 140 位）。干员数值页只看第一份，
+     * 所以用户会看到「6 星 5 星根本不全」。编辑器必须把两份都列出来、两份都能改。
+     */
+    private final File libraryFile;
+    /** 官方牌库的解析缓存。 */
+    private volatile JSONObject libraryCache;
     /** 玩家改过的干员数值（覆盖层；不存在表示一个都没改）。 */
     private final File overridesFile;
     /** 自定义干员表（玩家自己造的，实验功能）。 */
@@ -58,6 +69,7 @@ public final class HttpService {
         this.publicDir = new File(root, "public");
         this.levelsDir = new File(root, "content/levels");
         this.operatorsFile = new File(root, "data/aue-operators.json");
+        this.libraryFile = new File(root, "data/operator-library.json");
         this.overridesFile = new File(root, "data/operator-overrides.json");
         // 玩家自己造的干员（实验功能）：单独一份，不混进官方表，也不进覆盖表。
         // 服务端在 /data/aue-operators.json 里把它们合并进去，前端就当成普通干员用。
@@ -181,6 +193,12 @@ public final class HttpService {
         }
         // 干员表：把玩家改过的数值叠在官方原表上再发出去，前端就不需要为「改数值」做任何适配。
         // 原表本身还在磁盘上，编辑器要显示原值 + 改后值的对照，走 /api/operators。
+        // 官方全干员牌库同样要叠覆盖 —— 沙盒里真正生效的是这一份。
+        if (rawPath.equals("/data/operator-library.json")) {
+            byte[] body = effectiveLibraryJson().getBytes(StandardCharsets.UTF_8);
+            writeResponse(out, 200, "application/json; charset=utf-8", body, method.equals("HEAD"), null);
+            return;
+        }
         if (rawPath.equals("/data/aue-operators.json")) {
             byte[] body = effectiveOperatorsJson().getBytes(StandardCharsets.UTF_8);
             writeResponse(out, 200, "application/json; charset=utf-8", body, method.equals("HEAD"), null);
@@ -374,6 +392,23 @@ public final class HttpService {
         return cached;
     }
 
+    /** 官方全干员牌库（带缓存）。 */
+    private JSONObject libraryNative() {
+        JSONObject cached = libraryCache;
+        if (cached != null) return cached;
+        try {
+            cached = new JSONObject(readText(libraryFile));
+        } catch (Exception e) {
+            try {
+                cached = new JSONObject("{\"version\":1,\"operators\":{}}");
+            } catch (Exception ignored) {
+                cached = null;
+            }
+        }
+        libraryCache = cached;
+        return cached;
+    }
+
     private JSONObject readOverrides() {
         if (!overridesFile.isFile()) {
             try {
@@ -411,14 +446,19 @@ public final class HttpService {
     // ── 干员数值（读写见 OperatorStore） ───────────────────────────────
 
     private OperatorStore operatorStore() {
-        JSONObject nativeTable;
+        JSONObject table;
         try {
-            nativeTable = operatorsNative();
+            // 用合并表：覆盖表里可能出现官方牌库的键（si_char_003_kalts），
+            // 只用 aue 表的话那些改动永远叠不上去。
+            JSONObject ops = mergedOperators();
+            table = new JSONObject();
+            put(table, "version", 1);
+            put(table, "operators", ops);
         } catch (Exception e) {
-            nativeTable = null;
+            table = null;
         }
         JSONObject overrides = readOverrides();
-        return new OperatorStore(nativeTable, overrides);
+        return new OperatorStore(table, overrides);
     }
 
     /** GET /api/operator-edits → {count, ids:[...], byId:{id:[categories]}} */
@@ -442,16 +482,63 @@ public final class HttpService {
         return out.toString();
     }
 
-    /** GET /api/operators → { version, operators: 原表, edited: 覆盖表 } */
+    /**
+     * GET /api/operators → { version, operators: 合并后的原表, edited: 覆盖表, categories }
+     *
+     * operators 里是**两份表合并**的结果：官方牌库（operator-library.json，202 位真干员）
+     * 打底，模拟器自己的满配表（aue-operators.json，259 位，含联动）覆盖同名项。
+     * 只给一份的话，编辑器里 6 星只剩 7 位联动干员 —— 那正是用户说的「根本不全」。
+     */
     private String operatorsJson() {
-        JSONObject nativeTable = operatorsNative();
+        JSONObject merged = mergedOperators();
         JSONObject overrides = readOverrides();
         JSONObject out = new JSONObject();
-        put(out, "version", nativeTable != null ? nativeTable.optInt("version", 1) : 1);
-        put(out, "operators", nativeTable != null ? nativeTable.optJSONObject("operators") : new JSONObject());
+        put(out, "version", 1);
+        put(out, "operators", merged);
         put(out, "edited", overrides != null ? overrides.optJSONObject("operators") : new JSONObject());
         put(out, "categories", CATEGORIES_JSON);
         return out.toString();
+    }
+
+    /**
+     * 两份原表合并成一份，键统一成「编辑器/覆盖表用的 id」。
+     *
+     * 键的选择是有讲究的：
+     *   - aue 表的键（aue_char_002_amiya）本来就是沙盒前端认的 id（chessId）；
+     *   - 官方牌库的键是 si_char_003_kalts / chess_char_1_01_a 这种，前端通过
+     *     aue-operators.json 与 operator-library.json 自己的合并逻辑认它，
+     *     所以这里**保留牌库原键**，只补上 chessId 缺省等于键本身。
+     * 同名键由 aue 表胜出（它带模拟器需要的满配/技能字段）。
+     */
+    private JSONObject mergedOperators() {
+        JSONObject out = new JSONObject();
+
+        // 先铺官方牌库（面大：202 位真干员）
+        JSONObject lib = libraryNative();
+        JSONObject libOps = lib != null ? lib.optJSONObject("operators") : null;
+        if (libOps != null) {
+            java.util.Iterator<String> it = libOps.keys();
+            while (it.hasNext()) {
+                String id = it.next();
+                JSONObject rec = libOps.optJSONObject(id);
+                if (rec == null) continue;
+                put(out, id, rec);
+            }
+        }
+
+        // 再盖 aue 表（数量 259，含联动干员与模拟器侧字段）
+        JSONObject aue = operatorsNative();
+        JSONObject aueOps = aue != null ? aue.optJSONObject("operators") : null;
+        if (aueOps != null) {
+            java.util.Iterator<String> it = aueOps.keys();
+            while (it.hasNext()) {
+                String id = it.next();
+                JSONObject rec = aueOps.optJSONObject(id);
+                if (rec == null) continue;
+                put(out, id, rec);
+            }
+        }
+        return out;
     }
 
     /** 官方原表 + 玩家覆盖 + 自定义干员，叠成前端实际使用的那份（/data/aue-operators.json）。 */
@@ -475,6 +562,41 @@ public final class HttpService {
         }
         if (effective.opt("version") == null) put(effective, "version", 1);
         return effective.toString();
+    }
+
+    /**
+     * 官方牌库 + 玩家覆盖 → 沙盒实际使用的那份（/data/operator-library.json）。
+     *
+     * 只对牌库里存在的键叠覆盖，其余原样返回；覆盖表里 aue 侧的键不在这里出现，
+     * 那些由 /data/aue-operators.json 那条路由负责。
+     */
+    private String effectiveLibraryJson() {
+        JSONObject lib = libraryNative();
+        if (lib == null) return "{\"version\":1,\"operators\":{}}";
+        JSONObject out;
+        try {
+            out = new JSONObject(lib.toString());
+        } catch (Exception e) {
+            return "{\"version\":1,\"operators\":{}}";
+        }
+        JSONObject ops = out.optJSONObject("operators");
+        if (ops == null) return out.toString();
+
+        JSONObject overrides = readOverrides();
+        JSONObject edited = overrides != null ? overrides.optJSONObject("operators") : null;
+        if (edited == null) return out.toString();
+
+        java.util.Iterator<String> it = edited.keys();
+        while (it.hasNext()) {
+            String id = it.next();
+            JSONObject rec = ops.optJSONObject(id);
+            if (rec == null) continue;                    // 不是牌库里的键，跳过
+            JSONObject patch = edited.optJSONObject(id);
+            if (patch == null) continue;
+            JSONObject patched = OperatorStore.patchRecord(rec, patch);
+            if (patched != null) put(ops, id, patched);
+        }
+        return out.toString();
     }
 
     private static final JSONArray CATEGORIES_JSON = makeCategories();

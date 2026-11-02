@@ -21,7 +21,10 @@
   <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
 </head>
 <body class="menu-screen ops-screen">
-  <div class="menu__rail"><span>ARKNIGHTS / SIMULATOR</span><span>OPERATOR TUNING</span></div>
+  <div class="page__topbar">
+    <a class="page__back" href="/studio/home.html">← 返回主菜单</a>
+    <span class="page__crumb">ARKNIGHTS / SIMULATOR</span>
+  </div>
   <main class="ops">
     <header class="ops__head">
       <div>
@@ -29,7 +32,6 @@
         <h1>干员数值<span>调整</span></h1>
         <p>改动只保存成一份覆盖表，官方原表不动。改过的数字在沙盒与作战里立刻生效。</p>
       </div>
-      <a class="ops__back" href="/studio/home.html">← 返回主菜单</a>
     </header>
 
     <div class="ops__bar">
@@ -58,13 +60,25 @@
       <label class="ops__only"><input type="checkbox" id="ops-only-edited" /> 只看已改过的</label>
       <span class="ops__count" id="ops-count">读取中…</span>
       <button type="button" class="ops__custom" id="ops-new-custom">＋ 新建自定义干员</button>
-      <button type="button" class="ops__reset" id="ops-reset-all" disabled>全部还原</button>
+      <button type="button" class="ops__reset" id="ops-reset-all" disabled>还原改动</button>
     </div>
 
     <!-- 自定义干员表单挂在列表上方整行显示。
          它原来是 .ops__layout（两列 grid）的第三个子元素，把详情面板挤到了第二行的左半边 ——
          这就是「调整数值的面板怎么还在塞下面、不是应该左右两半分屏吗」的真正原因。 -->
     <div id="ops-custom-host"></div>
+
+    <!-- 「还原改动」原来用 window.prompt 让用户手打 1~5，手机上是原生输入框、每次弹键盘、
+         还得记住哪个数字对应哪一类 —— 改成页内按钮，点一下就完事。 -->
+    <div class="ops__revert" id="ops-revert" hidden>
+      <span class="ops__revert-hint">要还原哪些改动？</span>
+      <button type="button" class="ops__mini" data-revert-all="all">全部</button>
+      <button type="button" class="ops__mini" data-revert-all="stats">只基础数值</button>
+      <button type="button" class="ops__mini" data-revert-all="trait">只职业特性</button>
+      <button type="button" class="ops__mini" data-revert-all="talents">只天赋</button>
+      <button type="button" class="ops__mini" data-revert-all="modules">只模组</button>
+      <button type="button" class="ops__mini ops__revert-cancel" data-revert-all="cancel">取消</button>
+    </div>
 
     <div class="ops__layout">
       <ul class="ops__list" id="ops-list" role="listbox" aria-label="干员列表"></ul>

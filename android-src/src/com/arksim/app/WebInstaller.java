@@ -25,16 +25,33 @@ import java.util.zip.ZipInputStream;
 public final class WebInstaller {
 
     /**
-     * 网页资源版本戳。改动 public/ 下的东西就要 +1，否则老用户不会重新解包。
+     * 网页资源版本戳 —— 不再手写，改成读 APK 里 assets/web.stamp。
      *
-     * web-3：网页资源与提取产物从「应用专属外部目录」搬到「App 私有内部目录」，
-     * 因为放在外部目录时解出来的干员立绘会被相册 / 媒体选择器扫成照片。
+     * 以前是 private static final String VERSION = "web-3" 这样手维护：改 public/ 下的
+     * 东西必须记得回来 +1，否则老用户永远解包出旧的那一份 —— 实际已经踩过两次：
+     * 手机上看到的还是旧 CSS，而 APK 里的 web.zip 明明是新的，排查半天才发现是版本戳没动。
+     *
+     * 现在 build.sh 在打 web.zip 之后顺手算出它的 CRC32+字节数写进 assets/web.stamp，
+     * ensure() 直接读这个前缀。内容一变戳就变，不会再忘。
      */
-    private static final String VERSION = "web-3";
     private static final String PREFS = "arksim";
     private static final String KEY = "webVersion";
 
     private WebInstaller() {
+    }
+
+    /** 读 APK 里的 assets/web.stamp；读不到就退回一个永远不匹配的值（必然重新解包）。 */
+    private static String expectedVersion(Context ctx) {
+        try (InputStream in = ctx.getAssets().open("web.stamp")) {
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[128];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            String s = new String(bo.toByteArray(), "UTF-8").trim();
+            return s.isEmpty() ? "unknown" : s;
+        } catch (IOException e) {
+            return "unknown";
+        }
     }
 
     /**
@@ -45,13 +62,23 @@ public final class WebInstaller {
     public static File ensure(Context ctx, File base, Progress step) throws IOException {
         File dir = new File(base, "web");
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        final String VERSION = expectedVersion(ctx);
         if (VERSION.equals(prefs.getString(KEY, null)) && new File(dir, "public/studio/home.html").isFile()) {
             return dir;
         }
 
-        step.on("首次启动：正在解开网页资源…");
-        deleteTree(dir);
-        if (!dir.mkdirs() && !dir.isDirectory()) throw new IOException("无法创建目录 " + dir);
+        step.on("正在解开网页资源…");
+
+        // 先解到旁边一个全新的目录，成功后再整体换过去。
+        //
+        // 为什么不原地 deleteTree(dir) 再解：那份目录里混着**用户数据** ——
+        // 他花几十分钟从《明日方舟》里提取出来的几个 G 的美术（assets/local、
+        // assets/char）、改过的干员数值（data/operator-overrides.json）、
+        // 自己做的关卡（content/levels）。每次网页资源一变就把这些一起删掉，
+        // 用户看到的就是「更新一次 App，提取的图和改的数值全没了」。
+        File staging = new File(base, "web.staging");
+        deleteTree(staging);
+        if (!staging.mkdirs() && !staging.isDirectory()) throw new IOException("无法创建目录 " + staging);
 
         int count = 0;
         try (ZipInputStream zin = new ZipInputStream(new BufferedInputStream(ctx.getAssets().open("web.zip"), 64 * 1024))) {
@@ -61,7 +88,7 @@ public final class WebInstaller {
                 if (entry.isDirectory()) continue;
                 String name = entry.getName();
                 if (name.startsWith("/") || name.contains("..") || name.contains("\\")) continue;
-                File out = new File(dir, name);
+                File out = new File(staging, name);
                 File parent = out.getParentFile();
                 if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
                     throw new IOException("无法创建目录 " + parent);
@@ -74,12 +101,51 @@ public final class WebInstaller {
             }
         }
 
-        File home = new File(dir, "public/studio/home.html");
+        File home = new File(staging, "public/studio/home.html");
         if (!home.isFile()) throw new IOException("网页资源不完整（解出 " + count + " 个文件，缺 home.html）");
+
+        // 把旧目录里的用户数据搬进新目录（同名覆盖新解出来的那份）。
+        int kept = 0;
+        if (dir.isDirectory()) {
+            for (String rel : KEEP_PATHS) {
+                File old = new File(dir, rel);
+                if (!old.exists()) continue;
+                File dst = new File(staging, rel);
+                deleteTree(dst);
+                File parent = dst.getParentFile();
+                if (parent != null && !parent.isDirectory() && !parent.mkdirs()) continue;
+                if (old.renameTo(dst)) kept++;
+            }
+            deleteTree(dir);
+        }
+        if (!staging.renameTo(dir)) {
+            throw new IOException("无法把解包结果移到 " + dir);
+        }
+
         prefs.edit().putString(KEY, VERSION).apply();
-        step.on("网页资源就绪（" + count + " 个文件）");
+        step.on("网页资源就绪（" + count + " 个文件" + (kept > 0 ? "，保留本地提取与存档 " + kept + " 项" : "") + "）");
         return dir;
     }
+
+    /**
+     * 重新解包时要原样搬过去的路径（相对 web 根）。
+     *
+     * 这些是**用户自己产生的数据**，不属于我们发的网页资源：
+     *   assets/local、assets/char —— 从手机上的《明日方舟》提取出来的美术，几个 G
+     *   data/local-assets.*        —— 上面那批图的清单
+     *   data/operators-index.json  —— 干员名单（扫 skinpack 得到）
+     *   data/operator-overrides.json —— 用户在「干员数值调整」里改过的数值
+     *   content/levels             —— 用户自己做的关卡
+     */
+    private static final String[] KEEP_PATHS = {
+            "public/assets/local",
+            "public/assets/char",
+            "data/local-assets.json",
+            "data/local-fx.json",
+            "data/operators-index.json",
+            "data/operator-overrides.json",
+            "content/levels",
+    };
 
     /**
      * 清掉历史版本留在「应用专属外部目录」里的网页资源与提取产物。

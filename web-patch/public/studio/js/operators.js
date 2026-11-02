@@ -44,6 +44,7 @@ const searchEl = el('ops-search');
 const onlyEl = el('ops-only-edited');
 const countEl = el('ops-count');
 const resetAllEl = el('ops-reset-all');
+const revertBarEl = el('ops-revert');
 const profEl = el('ops-prof');
 const rarityEl = el('ops-rarity');
 const moduleEl = el('ops-module');
@@ -404,14 +405,31 @@ function setDeep(root, path, key, value) {
   node[key] = value;
 }
 
+/**
+ * 收集要提交的数值。
+ *
+ * 判据是「输入框里的值与原值不同」，**不是**看 `is-changed` 类。
+ * 原来只看类，而类是在 `input` 事件里加的 —— 手机数字键盘在某些输入法下
+ * （尤其连续点击、或用系统数字面板直接改）不会稳定派发 `input`，
+ * 结果用户明明改了数字、点保存却提示「没有改动可保存」。这是「干员数值调整无法保存」
+ * 最可能的一类成因，所以这里直接比数值。
+ */
 function collectPatches() {
   const patches = { stats: {}, trait: {}, talents: {}, modules: {} };
   for (const input of detailEl.querySelectorAll('input[data-kv]')) {
-    if (!input.classList.contains('is-changed')) continue;   // 只提交真改过的
     const raw = input.value.trim();
     if (raw === '') continue;
     const v = Number(raw);
     if (!Number.isFinite(v)) continue;
+
+    // 与原值比较：cell.dataset.origin 存的是原始单个值（JSON），可能为 null
+    const cell = input.closest('.ops__field');
+    let origin = null;
+    try { origin = cell && cell.dataset.origin ? JSON.parse(cell.dataset.origin) : null; } catch { origin = null; }
+    const same = origin === null ? false : Number(origin) === v;
+    if (same && !input.classList.contains('is-changed')) continue;   // 真没改
+    if (same && input.classList.contains('is-changed')) continue;    // 改回去了
+
     const path = input.dataset.kv;
     const key = input.dataset.key;
 
@@ -504,19 +522,17 @@ async function revertCurrent() {
   }
 }
 
-async function revertAll() {
-  const cats = ['stats', 'trait', 'talents', 'modules'].filter(
-    (c) => Object.keys(edited).some((id) => edited[id] && edited[id][c] && Object.keys(edited[id][c]).length),
-  );
-  if (!cats.length) return;
-  const choice = window.prompt(
-    '要还原哪些改动？\n1 = 全部\n2 = 只还原基础数值\n3 = 只还原职业特性\n4 = 只还原天赋\n5 = 只还原模组',
-    '1',
-  );
-  if (!choice) return;
-  const map = { '1': null, '2': 'stats', '3': 'trait', '4': 'talents', '5': 'modules' };
-  if (!(choice in map)) { setStatus('输入无效，已取消', true); return; }
-  const cat = map[choice];
+// 「还原改动」不再用 window.prompt 手打数字：手机上是原生输入框，每次都要弹键盘，
+// 还得记住 1~5 各自对应哪一类。改成页内一条按钮，点「还原改动」展开、点具体项执行。
+function openRevertBar() {
+  if (!revertBarEl) { doRevertAll(null); return; }
+  revertBarEl.hidden = !revertBarEl.hidden;
+}
+
+function closeRevertBar() { if (revertBarEl) revertBarEl.hidden = true; }
+
+async function doRevertAll(cat) {
+  closeRevertBar();
   try {
     await api(cat ? `/api/operators/ALL/${cat}` : '/api/operators/ALL', { method: 'DELETE' });
     await loadAll();
@@ -628,7 +644,20 @@ function refreshAllNow() {
   }
 }
 
-resetAllEl.addEventListener('click', revertAll);
+resetAllEl.addEventListener('click', () => {
+  const cats = ['stats', 'trait', 'talents', 'modules'].filter(
+    (c) => Object.keys(edited).some((id) => edited[id] && edited[id][c] && Object.keys(edited[id][c]).length),
+  );
+  if (!cats.length) { setStatus('现在没有任何改动可以还原'); return; }
+  openRevertBar();
+});
+revertBarEl?.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-revert-all]');
+  if (!btn) return;
+  const which = btn.dataset.revertAll;
+  if (which === 'cancel') { closeRevertBar(); return; }
+  doRevertAll(which === 'all' ? null : which);
+});
 
 /* ---- 自定义干员（实验功能） ------------------------------------------------------------------ */
 

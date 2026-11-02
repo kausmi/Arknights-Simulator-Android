@@ -95,7 +95,9 @@ def fit(img, long_edge, quality, dest):
     # 文件扩展名仍然用 .png（data/assets.json 登记的就是 .png，前端不该为一件事改两处），
     # 但内容存 WebP：真 PNG 一张 1200² 就要 800KB，467 个干员乘以四张图能到 1.3GB。
     # 因此 HttpService 发文件时会读文件头，认出 RIFF....WEBP 就发 image/webp。
-    img.save(dest, 'WEBP', quality=quality, method=4)
+    # method=0（最快）而不是 4：手机上 375 个干员 × 5 张要压，method=4 的编码时间
+    # 是 method=0 的三四倍，而体积差不到 8% —— 提取是用户坐等的那几分钟，省时间更要紧。
+    img.save(dest, 'WEBP', quality=quality, method=0)
     return dest
 
 

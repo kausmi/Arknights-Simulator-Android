@@ -12,6 +12,34 @@ LIBS=libs/shizuku-api.jar:libs/shizuku-provider.jar:libs/shizuku-aidl.jar:libs/s
 rm -rf build/gen build/classes build/dex build/apk
 mkdir -p build/gen build/classes build/dex build/apk
 
+# 版本指纹：web.zip 与 assets/{py,extract} 的内容一变，戳就变，App 侧据此决定是否重新解包。
+# 不这么做的话，改完前端/脚本忘了手动递增 Java 里的 VERSION 常量，手机上跑的就还是旧的那一份
+# （这个坑已经踩过两次：APK 里明明是新的 CSS，界面上却还是旧样式）。
+python3 - << 'STAMP'
+import os, zlib
+def stamp_bytes(paths):
+    crc, size = 0, 0
+    for p in paths:
+        with open(p, 'rb') as f:
+            while True:
+                b = f.read(1 << 20)
+                if not b: break
+                size += len(b)
+                crc = zlib.crc32(b, crc)
+    return '%08x-%d' % (crc & 0xffffffff, size)
+
+def walk(root):
+    out = []
+    for dirpath, _, names in os.walk(root):
+        for n in sorted(names):
+            out.append(os.path.join(dirpath, n))
+    return out
+
+open('assets/web.stamp', 'w').write(stamp_bytes(['assets/web.zip']) + '\n')
+open('assets/py.stamp', 'w').write(
+    stamp_bytes(walk('assets/py') + walk('assets/extract')) + '\n')
+STAMP
+
 echo "[1/5] aapt2 compile res"
 aapt2 compile --dir res -o build/gen/res.zip
 

@@ -130,6 +130,28 @@ public final class OperatorStore {
         return base;
     }
 
+    /**
+     * 把一份覆盖叠到一条干员记录上，返回**新的**记录（不改动入参）。
+     *
+     * 做成静态的，是因为官方牌库那条路由（/data/operator-library.json）手里已经有
+     * 那张表了，不该为了叠一次改动用整张表再 new 一个 OperatorStore 出来。
+     */
+    public static JSONObject patchRecord(JSONObject rec, JSONObject patch) {
+        if (rec == null || patch == null) return null;
+        JSONObject copy;
+        try {
+            copy = new JSONObject(rec.toString());
+        } catch (Exception e) {
+            return null;
+        }
+        OperatorStore helper = new OperatorStore(null, null);
+        helper.applyStats(copy, patch.optJSONObject("stats"));
+        helper.applyTrait(copy, patch.optJSONObject("trait"), "trait");
+        helper.applyTalents(copy, patch.optJSONObject("talents"));
+        helper.applyModules(copy, patch.optJSONObject("modules"));
+        return copy;
+    }
+
     /** 基础数值：写进 stats；等级/阶段这类同时同步到 status。 */
     private void applyStats(JSONObject rec, JSONObject patch) {
         if (patch == null || patch.length() == 0) return;

@@ -377,3 +377,57 @@
   .arksim-overlay__box h2 { font-size: 16px; }
   .arksim-overlay__steps li, .arksim-overlay__list li { line-height: 1.6; }
 }
+
+/* ---------- 通用页顶栏（home / help / operators 共用） ---------- */
+/* 三个 studio 页原来各写一套（menu__rail 绝对定位在文档流里、help__back 挤在标题行尾），
+   手机上横屏时一个会跟着滚动跑掉、一个被标题挤到看不见。统一成固定左上角的一行：
+   返回按钮 + 面包屑，永远压在最上层，安全区用 --sa-* 让开挖孔与手势条。 */
+.page__topbar {
+  position: fixed;
+  top: calc(10px + var(--sa-t, 0px));
+  left: calc(12px + var(--sa-l, 0px));
+  right: auto;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px - var(--sa-l, 0px) - var(--sa-r, 0px));
+  pointer-events: none;
+}
+.page__topbar > * { pointer-events: auto; }
+.page__back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #c4c2ac33;
+  border-radius: 8px;
+  background: #0c0f0ee0;
+  backdrop-filter: blur(6px);
+  color: #d0d2c7;
+  font-size: 13px;
+  letter-spacing: .04em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.page__back:active { transform: translateY(1px); }
+.page__back:hover { color: #9aead7; border-color: #9aead766; }
+.page__crumb,
+.page__tail {
+  font: 10px/1.4 var(--font-mono);
+  letter-spacing: .18em;
+  color: #8a948f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.page__tail { margin-left: auto; color: #6f7a75; }
+@media (max-width: 720px) {
+  .page__tail { display: none; }
+}
+@media (max-height: 620px) and (orientation: landscape) {
+  .page__topbar { top: calc(6px + var(--sa-t, 0px)); left: calc(10px + var(--sa-l, 0px)); gap: 9px; }
+  .page__back { min-height: 30px; padding: 0 10px; font-size: 12px; }
+}
