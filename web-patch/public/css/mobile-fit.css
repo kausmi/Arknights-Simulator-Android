@@ -92,11 +92,15 @@
   /* 主区：手机横屏时保持**左右两栏**（画布在左、属性面板在右），只是把侧栏从
      level.css 写死的 340px 收到 220px。上下堆叠虽然省宽度，但横屏只有 360px 高，
      叠起来画布和面板都只剩一百多像素，谁都看不清 —— 并排才是这个比例下的正确解法。 */
+  /* 注意：.lv-stage 在 level.css 里是 display:grid，不是 flex ——
+     以前这里写 flex-direction:row 完全不生效，侧栏仍是写死的 316px，
+     800px 宽的横屏手机画布只剩 480px，格子小到点不中。
+     必须用 grid-template-columns 才真的能改列宽。 */
   .lv .lv-stage {
-    flex-direction: row;
     gap: 8px;
     padding: 8px 10px 12px;
     align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) 216px;
     height: calc(100dvh - 106px);
     box-sizing: border-box;
     overflow: hidden;
@@ -105,7 +109,7 @@
      而手机横屏只有 360px 高 —— 整个战场直接跑到屏幕外，用户看到的就是「UI 很有问题」。
      手机档改成「宽高都交给容器、比例交给网格自适应」：21×19 压进剩余空间，全图一屏看全。 */
   .lv .lv-canvas-wrap {
-    flex: 1 1 auto;
+    min-width: 0;
     width: auto;
     max-width: none;
     min-width: 0;
@@ -116,8 +120,7 @@
   .lv #lv-map-host { max-width: none; padding: 4px; height: 100%; box-sizing: border-box; }
   .lv .lv-map { width: 100%; height: 100%; aspect-ratio: auto; }
   .lv .lv-side {
-    width: 220px !important;
-    flex: 0 0 220px !important;
+    width: auto !important;
     min-height: 0;
     max-height: none;
     overflow: auto;
@@ -161,8 +164,11 @@
    rem 由 theme.css 按 100svh/10.8 算，平板横放 800 高 → 1rem≈74px，比手机（32~40px）大一倍多，
    但比桌面（1100 高 → 102px）小。这里只做「别把内容拉到铺满」的收束。 */
 @media (min-width: 900px) and (pointer: coarse) {
-  /* 编辑器：侧栏固定 320 而不是跟着 rem 涨到很宽 */
-  .lv .lv-side { width: 320px; flex: 0 0 320px; }
+  /* 编辑器：侧栏固定 320 而不是跟着 rem 涨到很宽。
+     .lv-stage 是 display:grid，改宽度必须改 grid-template-columns ——
+     只写 width/flex-basis 的话列宽还是 level.css 的 316px，元素反而溢出 4px。 */
+  .lv .lv-stage { grid-template-columns: minmax(0, 1fr) 320px; }
+  .lv .lv-side { width: auto; }
   .lv .lv-stage .lv-canvas-wrap { max-width: none; }
   /* 沙盒右侧计分板/详情卡在平板上留窄一点，别盖住棋盘 */
   .sb .hud__score { width: clamp(280px, 26vw, 340px); }

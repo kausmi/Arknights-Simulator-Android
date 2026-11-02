@@ -131,7 +131,7 @@ body.sb {
 
 .plate__stat i {
   font-style: normal;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   letter-spacing: .16em;
   color: var(--text-lo);
   text-transform: uppercase;
@@ -199,7 +199,7 @@ body.sb {
 
 .cap__k {
   font-family: var(--font-cjk);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 400;
   letter-spacing: .04em;
   color: var(--text-lo);
@@ -347,7 +347,7 @@ body.sb {
   border-right: 1px solid rgba(255, 255, 255, .22);
   border-bottom: 1px solid rgba(255, 255, 255, .22);
   color: var(--text-md);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   line-height: 1;
   opacity: .62;
   transition: opacity 120ms, background 120ms, color 120ms, border-color 120ms;
@@ -403,7 +403,7 @@ body.sb {
   left: .05rem;
   right: .05rem;
   bottom: .03rem;
-  font-size: .12rem;
+  font-size: max(11px, .12rem);
   font-weight: 600;
   letter-spacing: .02em;
   color: #f2f2f2;
@@ -488,7 +488,7 @@ body.sb {
   padding: 0 .03rem;
   background: rgba(0, 0, 0, .72);
   font-family: var(--font-num);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 700;
   color: #fff;
   line-height: 1.3;
@@ -524,7 +524,7 @@ body.sb {
   background: rgba(6, 8, 10, .96);
   border: 1px solid var(--hair-2);
   color: var(--text-hi);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
@@ -643,7 +643,7 @@ body.sb {
   padding: .012rem .05rem;
   background: var(--gold);
   color: #101214;
-  font-size: .08rem;
+  font-size: max(11px, .08rem);
   font-weight: 700;
   line-height: 1.5;
   letter-spacing: .04em;
@@ -668,7 +668,7 @@ body.sb {
 }
 
 .dt__name small {
-  font-size: .09rem;
+  font-size: max(11px, .09rem);
   font-weight: 400;
   color: var(--gold);
   overflow: hidden;
@@ -684,7 +684,7 @@ body.sb {
 }
 
 .dt__sub small {
-  font-size: .095rem;
+  font-size: max(11px, .095rem);
   color: var(--text-dim);
   letter-spacing: .02em;
   overflow: hidden;
@@ -712,14 +712,14 @@ body.sb {
 
 .dt__stat i {
   font-style: normal;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   color: var(--text-dim);
   white-space: nowrap;
 }
 
 .dt__stat b {
   font-family: var(--font-num);
-  font-size: .125rem;
+  font-size: max(11px, .125rem);
   font-weight: 700;
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
@@ -728,7 +728,7 @@ body.sb {
 
 /* 生命值那一行：标签「生命值」，值写成 当前/上限 */
 .dt__stat--hp { border-left-color: rgba(120, 220, 140, .55); }
-.dt__stat--hp b { font-size: .115rem; }
+.dt__stat--hp b { font-size: max(11px, .115rem); }
 
 /* 左栏底部：技能键 + 撤退键并排 */
 .dt__basicbtns {
@@ -779,7 +779,7 @@ body.sb {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .78) 42%);
   color: #fff;
   font-family: var(--font-num);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 700;
   line-height: 1.25;
   text-align: center;
@@ -827,7 +827,7 @@ body.sb {
   gap: .02rem;
   background: linear-gradient(180deg, #e0332a, #a8161c);
   color: #fff;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 700;
   letter-spacing: .04em;
   border: 1px solid rgba(255, 140, 130, .5);
@@ -869,7 +869,7 @@ body.sb {
   padding: .03rem .02rem .04rem;
   background: rgba(255, 255, 255, .04);
   color: var(--text-dim);
-  font-size: .115rem;
+  font-size: max(11px, .115rem);
   font-weight: 700;
   letter-spacing: .06em;
   text-align: center;
@@ -901,7 +901,7 @@ body.sb {
   display: flex;
   align-items: baseline;
   gap: .06rem;
-  font-size: .12rem;
+  font-size: max(11px, .12rem);
   color: var(--gold);
 }
 
@@ -911,7 +911,7 @@ body.sb {
   flex: none;
   padding: 0 .05rem;
   font-style: normal;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 700;
   letter-spacing: .04em;
   color: #0b0d10;
@@ -921,7 +921,7 @@ body.sb {
 
 .dt__seg-p {
   margin: .02rem 0 0;
-  font-size: .115rem;
+  font-size: max(11px, .115rem);
   line-height: 1.45;
   color: var(--text-dim);
   white-space: pre-wrap;
@@ -939,7 +939,7 @@ body.sb {
 .dt__seg-meta i {
   font-style: normal;
   padding: 0 .05rem;
-  font-size: .095rem;
+  font-size: max(11px, .095rem);
   line-height: 1.5;
   color: #0b0d10;
   background: #7fb2c8;
@@ -973,7 +973,7 @@ body.sb {
 }
 
 .dt__name small {
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 400;
   color: var(--gold);
   letter-spacing: .04em;
@@ -1006,7 +1006,7 @@ body.sb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   font-weight: 700;
   color: #fff;
   text-shadow: 0 0 .04rem #000, 0 1px 2px #000;
@@ -1070,7 +1070,7 @@ body.sb {
   text-align: center;
   background: rgba(0, 0, 0, .68);
   font-family: var(--font-num);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 700;
   color: #d9ffe9;
   letter-spacing: .02em;
@@ -1114,7 +1114,7 @@ body.sb {
   background: rgba(0, 176, 255, .16);
   border: 1px solid rgba(0, 176, 255, .55);
   color: var(--blue);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   position: relative;
   display: flex;
   align-items: center;
@@ -1139,7 +1139,7 @@ body.sb {
   place-items: center;
   background: rgba(6, 8, 10, .72);
   font-family: var(--font-num);
-  font-size: .12rem;
+  font-size: max(11px, .12rem);
   font-weight: 700;
   color: var(--gold);
   letter-spacing: .02em;
@@ -1254,14 +1254,14 @@ body.sb {
   display: flex;
   align-items: center;
   gap: .06rem;
-  font-size: .12rem;
+  font-size: max(11px, .12rem);
   letter-spacing: .1em;
   color: var(--gold);
   text-transform: uppercase;
 }
 
 .dr__head small {
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   font-weight: 400;
   letter-spacing: .04em;
   color: var(--text-dim);
@@ -1277,7 +1277,7 @@ body.sb {
 
 .dr__hint {
   margin: 0;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   line-height: 1.5;
   color: var(--text-dim);
 }
@@ -1290,7 +1290,7 @@ body.sb {
   background: rgba(255, 255, 255, .05);
   border: 1px solid transparent;
   color: var(--text-md);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   letter-spacing: .04em;
 }
 
@@ -1342,8 +1342,8 @@ body.sb {
   border-left: 3px solid var(--red);
 }
 
-.dr__ctx b { font-size: .13rem; color: #fff; }
-.dr__ctx span { font-size: .1rem; color: #ffb3ac; }
+.dr__ctx b { font-size: max(11px, .13rem); color: #fff; }
+.dr__ctx span { font-size: max(11px, .1rem); color: #ffb3ac; }
 
 .dr__ctx-x {
   position: absolute;
@@ -1356,7 +1356,7 @@ body.sb {
   background: rgba(8, 10, 12, .8);
   border: 1px solid rgba(255, 255, 255, .2);
   color: var(--text-md);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
 }
 
 .dr__ctx-x:hover { color: #fff; border-color: var(--red); }
@@ -1377,7 +1377,7 @@ body.sb {
   background: rgba(255, 255, 255, .05);
   border: 1px solid rgba(255, 255, 255, .12);
   color: var(--text-md);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   line-height: 1.2;
 }
 
@@ -1391,7 +1391,7 @@ body.sb {
   align-items: center;
   gap: .04rem;
   padding: .02rem .06rem;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   color: var(--text-md);
   border: 1px dashed rgba(255, 255, 255, .2);
 }
@@ -1413,7 +1413,7 @@ body.sb {
   flex-wrap: wrap;
   align-items: baseline;
   gap: .04rem .08rem;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   color: var(--text-dim);
 }
 
@@ -1428,7 +1428,7 @@ body.sb {
   padding: .02rem .06rem;
   background: rgba(255, 255, 255, .06);
   border: 1px solid rgba(255, 255, 255, .16);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   color: var(--text-md);
 }
 
@@ -1445,7 +1445,7 @@ body.sb {
   border-left: 2px solid var(--gold);
 }
 
-.rtpop__row { display: flex; align-items: center; gap: .05rem; font-size: .1rem; color: var(--text-md); }
+.rtpop__row { display: flex; align-items: center; gap: .05rem; font-size: max(11px, .1rem); color: var(--text-md); }
 .rtpop__row input {
   width: .6rem;
   height: .24rem;
@@ -1500,7 +1500,7 @@ body.sb {
 
 .ecard span {
   position: relative;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   color: var(--text-md);
   text-align: center;
   line-height: 1.15;
@@ -1527,7 +1527,7 @@ body.sb {
   background: rgba(255, 255, 255, .06);
   border: 1px solid rgba(255, 255, 255, .16);
   color: var(--text-hi);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   letter-spacing: .02em;
   white-space: nowrap;
 }
@@ -1557,7 +1557,7 @@ body.sb {
   border: 1px solid rgba(255, 255, 255, .2);
   background: rgba(255, 255, 255, .05);
   color: var(--text-md);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   line-height: 1;
   transition: box-shadow 120ms, transform 120ms;
 }
@@ -1594,7 +1594,7 @@ body.sb {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: .09rem;
+  font-size: max(11px, .09rem);
   color: var(--text-dim);
 }
 
@@ -1605,7 +1605,7 @@ body.sb {
   border: 1px solid rgba(255, 255, 255, .16);
   color: var(--text-hi);
   font-family: var(--font-mono);
-  font-size: .12rem;
+  font-size: max(11px, .12rem);
   text-align: center;
 }
 
@@ -1614,7 +1614,7 @@ body.sb {
 .rcgrid .dbtn {
   grid-column: 1 / -1;
   height: .22rem;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
 }
 
 /* 折叠起来的 JSON 区 */
@@ -1627,7 +1627,7 @@ body.sb {
   border: 1px solid rgba(255, 255, 255, .14);
   color: var(--text-md);
   font-family: var(--font-mono);
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   resize: vertical;
 }
 
@@ -1649,62 +1649,81 @@ body.sb {
 
 .hud__picker.is-on { opacity: 1; pointer-events: auto; }
 
+/* 选人面板。
+   尺寸用 px 而不是 rem：rem 在手机上只有 33px 左右（1rem = min(100vw/19.2, 100svh/10.8)），
+   于是原来 .82rem 的格子只有 27px 宽 —— 头像和名字根本看不清，正是用户报「加入手牌界面太大、
+   上面那一横排职业选择看不到、干员头像也看不见」的根因。格子改成 minmax(76px,1fr) 自适应。 */
 .pk {
   box-sizing: border-box;
-  width: min(8.6rem, calc(100vw - 32px));
-  height: min(6.2rem, calc(100dvh - 32px));
+  width: min(1080px, calc(100vw - 24px));
+  height: min(680px, calc(100dvh - 24px));
   display: flex;
   flex-direction: column;
-  gap: .1rem;
-  padding: .16rem;
+  gap: 10px;
+  padding: 14px;
   background: var(--glass-solid);
   border: 1px solid var(--hair-2);
-  box-shadow: 0 .2rem .6rem rgba(0, 0, 0, .7);
-  clip-path: polygon(0 0, calc(100% - .16rem) 0, 100% .16rem, 100% 100%, .16rem 100%, 0 calc(100% - .16rem));
+  box-shadow: 0 18px 56px rgba(0, 0, 0, .7);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
 }
 
-.pk__head { display: flex; align-items: center; gap: .12rem; flex: none; }
-.pk__head h2 { font-size: .18rem; font-weight: 700; letter-spacing: .04em; margin: 0; }
+/* 头部一行放下「标题 + 搜索 + 自动 + 关闭」；窄屏时标题让位、按钮不换行 */
+.pk__head { display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap; }
+.pk__head h2 { font-size: 17px; font-weight: 700; letter-spacing: .04em; margin: 0; flex: none; }
 .pk__head input {
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
-  height: .32rem;
-  padding: 0 .1rem;
+  height: 36px;
+  padding: 0 11px;
   background: rgba(0, 0, 0, .45);
   border: 1px solid rgba(255, 255, 255, .16);
   color: var(--text-hi);
   font: inherit;
-  font-size: .12rem;
+  font-size: 13px;
 }
+/* 头部里的按钮不再参与 .dbtn 的 flex:1 均分 */
+.pk__head .dbtn { flex: 0 0 auto; height: 36px; padding: 0 13px; font-size: 13px; }
 
+/* 网格自适应：一行能塞几个就塞几个，每个格子至少 76px 宽 */
 .pk__grid {
   flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  align-content: start;
+  gap: 8px;
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
   scroll-behavior: auto;
-  padding-right: .04rem;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
 }
+/* 没有匹配结果时的提示横跨整行 */
+.pk__grid > .dr__hint { grid-column: 1 / -1; }
 
 .pk__op {
-  width: .82rem;
-  flex: none;
+  width: auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .03rem;
-  padding: .03rem;
+  gap: 4px;
+  padding: 5px;
   background: rgba(255, 255, 255, .04);
   border: 1px solid rgba(255, 255, 255, .1);
 }
 
 .pk__op:hover { border-color: var(--gold); background: rgba(242, 201, 76, .12); }
-.pk__op img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
-.pk__op span { font-size: .09rem; color: var(--text-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pk__op img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 3px; }
+.pk__op span { font-size: 12px; line-height: 1.25; color: var(--text-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* 极窄屏（竖屏手机）：格子再小一档，但名字仍然读得出来 */
+@media (max-width: 520px) {
+  .pk { width: calc(100vw - 12px); height: calc(100dvh - 12px); padding: 10px; gap: 8px; }
+  .pk__grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+  .pk__head h2 { font-size: 15px; }
+  .pk__op span { font-size: 11px; }
+}
 
 /* ---- toast ------------------------------------------------------------------------------------------------------ */
 .hud__msg {
@@ -1716,7 +1735,7 @@ body.sb {
   border: 1px solid var(--hair-2);
   border-left: 3px solid var(--gold);
   color: var(--text-hi);
-  font-size: .12rem;
+  font-size: max(11px, .12rem);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
@@ -1743,7 +1762,7 @@ body.sb {
   background: rgba(8, 10, 12, .7);
   border: 1px solid rgba(255, 255, 255, .18);
   color: var(--text-dim);
-  font-size: .11rem;
+  font-size: max(11px, .11rem);
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms;
@@ -1812,7 +1831,7 @@ body.sb {
   transform: translate(-50%, 100%);
   padding: .02rem .08rem;
   white-space: nowrap;
-  font-size: .13rem;
+  font-size: max(11px, .13rem);
   font-weight: 700;
   color: #fff;
   background: rgba(20, 22, 26, .88);
@@ -1891,7 +1910,7 @@ body.sb {
   display: grid;
   place-items: center;
   font-style: normal;
-  font-size: .1rem;
+  font-size: max(11px, .1rem);
   letter-spacing: .1em;
   color: var(--gold-dim);
   border: 1px solid rgba(255, 255, 255, .1);

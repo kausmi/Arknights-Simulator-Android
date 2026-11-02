@@ -21,7 +21,7 @@
   border: 1px solid var(--hair-2); border-left: 2px solid var(--amber); border-radius: .06rem;
 }
 .hud__workspace a { color: #b6b9b0; text-decoration: none; font-size: max(10px, .11rem); }
-.hud__workspace .workspace__brand { padding: 0 .12rem; color: var(--amber); font: .22rem var(--font-display); display: flex; gap: .1rem; align-items: center; }
+.hud__workspace .workspace__brand { padding: 0 .12rem; color: var(--amber); font: max(13px, .22rem) var(--font-display); display: flex; gap: .1rem; align-items: center; }
 .workspace__brand span { color: #d0d1c7; font: max(10px, .11rem) var(--font-cjk); }
 .hud__workspace .workspace__save { align-self: stretch; padding: 0 .14rem; font-size: max(10px, .11rem); background: #63d7bd0a; border-left: 1px solid var(--hair); border-right: 1px solid var(--hair); color: var(--accent); }
 .workspace__save span { margin-left: .08rem; font-family: var(--font-mono); opacity: .6; }
@@ -154,7 +154,7 @@
 .workspace__exit > summary { height: 100%; list-style: none; }
 .workspace__exit > summary::-webkit-details-marker { display: none; }
 .workspace__exit > summary:hover { background: #63d7bd12; }
-.workspace__exit > summary::after { content: '▾'; font-size: .1rem; transition: transform .15s; }
+.workspace__exit > summary::after { content: '▾'; font-size: max(11px, .1rem); transition: transform .15s; }
 .workspace__exit[open] > summary::after { transform: rotate(180deg); }
 .workspace__exit-panel { position: absolute; top: calc(100% + .08rem); left: 0; width: 2.4rem; padding: .14rem; background: var(--glass-solid); border: 1px solid var(--hair-2); box-shadow: 0 .08rem .24rem #0009; }
 .workspace__exit-panel p { margin: 0 0 .12rem; color: #d0d1c7; font-size: max(11px, .12rem); }
@@ -247,7 +247,31 @@ html[data-text="xl"] .hud { --sandbox-text-scale: 1.4; }
 .sb .hud__score.is-folded .score__clear { display: none; }
 .score__head .score__fold { padding: 2px 6px; line-height: 1; font-size: max(11px, .12rem); }
 
-.pk__professions { display: flex; gap: .04rem; flex-wrap: wrap; margin: .1rem 0; flex: none; }
+/* 职业筛选：一条横向可滚动的高亮条。
+   原来这里是 flex-wrap: wrap，而按钮本身是 .dbtn（flex: 1，flex-basis 0），9 个职业被平分成
+   两行、每个只剩十几像素宽、字号被压到看不清 —— 手机上就是「上面那一横排根本看不见」。
+   改成 nowrap + 按钮 flex: 0 0 auto + px 尺寸，看得见也点得准。 */
+.pk__professions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  margin: 0;
+  flex: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.pk__professions::-webkit-scrollbar { display: none; }
+.pk__professions .dbtn {
+  flex: 0 0 auto;
+  min-width: 54px;
+  height: 34px;
+  padding: 0 13px;
+  font-size: 13px;
+  letter-spacing: .02em;
+}
 .pk__professions .is-on { border-color: #edbd75; color: #edbd75; }
 .hand--tight .hand__scroll { gap: .04rem; }
 .hand--tight .ocard { width: min(.72rem, calc((100vw - 3.3rem) / var(--hand-count))); }

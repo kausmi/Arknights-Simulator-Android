@@ -47,7 +47,7 @@ export function openSaveManager({ current, onLoad, onClose, onSaved, onNew, host
       ${readable ? `<label class="saves__label">复制到<select id="save-target">${slots.map((item, i) => i === selected ? '' : `<option value="${i}">${pad2(i + 1)} · ${esc(item?.name || '空存档位')}</option>`).join('')}</select></label>
       <button type="button" class="menu__button" data-save="copy">复制存档</button>` : ''}
       <button type="button" class="menu__button menu__button--danger" data-save="delete" ${slot ? '' : 'disabled'}>删除此存档</button>
-      <p class="saves__note">${current ? '只保存此刻仍在场的单位，已退场、死亡或尚未出现的单位不进入新存档。' : '新建使用 8 × 17 空白沙盘。'}进行中的技能、异常状态与弹道不恢复。清除网站数据会删除存档。</p>
+      <p class="saves__note">${current ? '只保存此刻仍在场的单位，已退场、死亡或尚未出现的单位不进入新存档。' : '新建使用 8 × 17 空白沙盘。'}进行中的技能、异常状态与弹道不恢复。清除应用数据会删除存档。</p>
       </section></div><p class="saves__status${bad ? ' is-bad' : ''}" role="status">${esc(message)}</p>`;
     if (host) {
       const list = dialog.querySelector('.saves__list').outerHTML;

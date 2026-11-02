@@ -1,0 +1,419 @@
+/* ==========================================================================================
+   responsive.css — 全站统一的「按设备形态分档」适配层（Android 版）。
+
+   为什么要有这一层：
+     theme.css 把 1rem 定义成「设计稿 1920×1080 的 1/19.2」。桌面 1920 宽 → 1rem = 100px，
+     所有 .xx rem 尺寸看起来都刚好；可手机横屏的 CSS 视口只有 800×360 左右，1rem 被 clamp 到
+     32~33px，于是同一句 width: .82rem 在桌面是 82px（正常按钮），在手机上只有 27px（点不到），
+     font-size: .09rem 桌面 9px、手机 3px（字被吞）。
+     结论：**凡是控件尺寸与正文字号，一律用 px；rem 只留给需要等比缩放的装饰性大字号。**
+
+   本层的分档（按「短边」和「是否触摸」判断，不看单一宽度 —— 平板横放 CSS 宽度常常只有 800 出头，
+   用 max-width:860px 会把平板误判成手机）：
+     A 触摸通用     pointer: coarse —— 热区、去悬停、输入框 16px、惯性滚动
+     B 手机横屏     max-height: 620px（短边矮）—— 最紧的一档
+     C 手机竖屏     orientation: portrait 且 max-width: 720px —— 纵向滚动、单列
+     D 平板         ≥ 900px 且粗指针 —— 中档，收束不要铺满
+     E 大屏/桌面    ≥ 1400px —— 舒展档，内容居中不拉长
+
+   视觉语言与原来完全一致：终端网格底、琥珀 #edb563 高亮、青绿 #63d7bd 交互、
+   八边形切角、等宽数字。本文件只改「摆在哪儿、多大、多密」，不改配色与文案。
+   加载顺序：必须排在 mobile-fit.css 之后（它负责沙盒/编辑器的细节，本层负责全局分档）。
+   ========================================================================================== */
+
+/* ---- 0. 全站变量 ---------------------------------------------------------------------- */
+:root {
+  /* 手机/平板上一律用这几个 px 值，别再拿 rem 写控件 */
+  --r-gap: 12px;          /* 卡片/区块间距 */
+  --r-pad: 16px;          /* 页面左右内边距 */
+  --r-radius: 8px;
+  --r-tap: 40px;          /* 可点区域最小高度 */
+  --r-fs-body: 13px;      /* 正文 */
+  --r-fs-small: 12px;     /* 次要信息 */
+  --r-fs-tiny: 11px;      /* 角标、编号 */
+  --r-fs-title: 20px;     /* 区块标题 */
+}
+
+/* ---- A. 触摸设备通用 ------------------------------------------------------------------- */
+@media (pointer: coarse), (any-pointer: coarse) {
+  :root { --r-tap: 44px; }
+
+  /* 所有可点元素给足高度，且不要 300ms 点击延迟 / 双击缩放 */
+  :is(.menu-screen, .studio, .sb, .lv) :is(button, a.menu-card, .menu__button, .op-button,
+    .lv-btn, .dbtn, .cap, .dr__tab, .place, .chip, .saves__slot, .operation-level,
+    .operation-operator, .pk__op, select) {
+    touch-action: manipulation;
+  }
+
+  /* 输入框字号 ≥16px，否则 WebView 聚焦时会自动放大整页 */
+  :is(.menu-screen, .studio, .sb, .lv) :is(input:not([type=range]):not([type=checkbox]),
+    textarea, select) {
+    font-size: max(16px, 1em);
+  }
+
+  /* 滚动容器吃手指惯性，且不要把滚动传给外层 */
+  :is(.menu-screen, .studio, .sb, .lv) :is(.saves__list, .saves__detail, .lv-list,
+    .lv-side, .pk__grid, .operation-operators, .operation-team-side, .dr__inner,
+    .help__body, .ops__list, .ops__detail) {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* 悬停才出现的提示在触摸下没有意义，别占位 */
+  :is(.menu-screen, .studio, .sb, .lv) [data-hover-only] { display: none !important; }
+}
+
+/* ---- B. 手机横屏（短边 ≤ 620px）：最紧的一档 ------------------------------------------ */
+@media (max-height: 620px) {
+  :root {
+    --r-gap: 8px;
+    --r-pad: 12px;
+    --r-fs-body: 12px;
+    --r-fs-small: 11px;
+    --r-fs-tiny: 10px;
+    --r-fs-title: 16px;
+    --r-tap: 38px;
+  }
+
+  /* --- B1. 主页：三主卡一屏放得下，不再逐张堆高 --- */
+  .menu-screen .menu__content {
+    justify-content: flex-start;
+    padding: 46px var(--r-pad) 14px;
+    min-height: 0;
+    width: min(100%, 1360px);
+    gap: 0;
+  }
+  .menu-screen .menu__heading {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0 0 10px;
+    text-align: left;
+    padding-right: 0;
+  }
+  .menu-screen .menu__heading h1 { font-size: 21px; margin: 0; letter-spacing: .06em; }
+  .menu-screen .menu__heading p { font-size: 11px; }
+  .menu-screen .menu__eyebrow { width: 100%; font-size: 9.5px; letter-spacing: .14em; }
+  .menu-screen .menu__brand { display: none; }
+
+  .menu-screen .menu__primary {
+    grid-template-columns: 1.1fr 1fr 1fr;
+    gap: var(--r-gap);
+    align-items: stretch;
+  }
+  /* menu-fit.css 的手机档把第 3 张设成 grid-column:1/-1（它按两列排）——
+     这里是三列并排，必须把跨列重置掉，否则第三张独占一行、整块变两行。 */
+  .menu-screen .menu__primary > .menu-card:nth-child(n) { margin-top: 0; grid-column: auto; }
+  .menu-screen .menu__primary > .menu-card--hero { min-height: 0; }
+
+  .menu-screen .menu-card {
+    padding: 10px 12px 0;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  }
+  .menu-screen .menu-card::after { top: 9px; right: 10px; width: 6px; height: 6px; }
+  .menu-screen .menu-card__top { font-size: 9.5px; padding-right: 14px; }
+  .menu-screen .menu-card__top > span { font-size: 9.5px; }
+  /* 插画区在横屏里是最占地方又最没信息量的一块：压成一条横带 */
+  .menu-screen .menu-card__art {
+    height: 44px;
+    margin: 6px 0;
+    justify-content: flex-start;
+  }
+  .menu-screen .menu-card__art b { font-size: 26px; letter-spacing: .04em; }
+  .menu-screen .menu-card__art::after { inset: 6px -10px 6px 30%; }
+  .menu-screen .menu-card__body { padding-bottom: 8px; gap: 3px; }
+  .menu-screen .menu-card__body strong { font-size: 15px; letter-spacing: .04em; }
+  /* 说明正文在横屏里只留一行，多的让它自己省略 —— 想看完整描述进页面再看 */
+  .menu-screen .menu-card__body > span {
+    font-size: 11px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .menu-screen .menu-card__foot {
+    margin: auto -12px 0;
+    padding: 8px 12px;
+    font-size: 11.5px;
+  }
+  .menu-screen .menu-card__foot b { font-size: 15px; }
+
+  .menu-screen .menu__secondary { grid-template-columns: 1fr 1fr; gap: var(--r-gap); margin-top: var(--r-gap); }
+  .menu-screen .menu-mini { padding: 8px 12px; gap: 10px; }
+  .menu-screen .menu-mini svg { width: 18px; height: 18px; }
+  .menu-screen .menu-mini b { font-size: 12.5px; }
+  .menu-screen .menu-mini small { display: none; }
+  .menu-screen .menu-mini__arrow { font-size: 14px; }
+
+  .menu-screen .menu__footer { margin-top: 10px; padding-top: 8px; font-size: 9px; gap: 8px; }
+
+  /* --- B2. 顶栏（返回 / 主菜单 / 页签）：一行放下，不许折行 --- */
+  .page__topbar {
+    padding: 6px var(--r-pad);
+    font-size: 9.5px;
+    gap: 8px;
+  }
+  .page__topbar .page__tail { display: none; }
+  .page__back { padding: 5px 10px; font-size: 11.5px; }
+
+  /* --- B3. 通用区块：标题、卡片、按钮 --- */
+  :is(.ops, .help) { padding-top: calc(42px + var(--sa-t, 0px)); padding-bottom: calc(14px + var(--sa-b, 0px)); gap: 10px; }
+  :is(.ops, .help) > .ops__head h1,
+  :is(.ops, .help) > .help__head h1 { font-size: 18px; margin: 2px 0 4px; }
+  :is(.ops, .help) > :is(.ops__head, .help__head) p { font-size: 11.5px; line-height: 1.6; }
+
+  /* --- B4. 设置 / 存档对话框：手机上几乎全屏，左列表右详情并排 --- */
+  .saves {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 14px 16px;
+    border-radius: 6px;
+  }
+  .saves__head h2 { font-size: 17px; }
+  .saves__intro { margin: 6px 0 10px; font-size: 11px; }
+  .saves__layout { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .saves__list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-height: none;
+    overflow: auto;
+  }
+  .saves__slot { min-height: 46px; padding: 6px 8px; gap: 8px; }
+  .saves__number { font-size: 15px; }
+  .saves__slotbody b { font-size: 11.5px; }
+  .saves__slotbody small { font-size: 10px; }
+  .saves__slotbody time { font-size: 9px; }
+  .saves__detail { padding: 10px 12px; gap: 8px; }
+  .saves__detail h3 { font-size: 14px; }
+  .saves__label input, .saves__label select { min-height: 32px; font-size: 12px; }
+  .saves__detail .menu__button, .saves__action { min-height: 32px; font-size: 12px; padding: 4px 10px; }
+
+  .settings__sections { grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+  .settings__sections h3 { font-size: 12px; padding-bottom: 6px; }
+  .settings__row { min-height: 34px; gap: 8px; font-size: 11.5px; }
+  .settings__row select { max-width: 120px; padding: 3px 6px; font-size: 11.5px; }
+  .settings__themes { gap: 6px; }
+  .settings__hint, .settings__assets-note, .settings__assets-why { font-size: 11px; line-height: 1.55; }
+
+  /* --- B5. 作战页（关卡选择 / 编队）：三栏压窄，列表能滚 --- */
+  .operation-screen { font-size: 12px; }
+  .operation-head { padding: 7px 12px; gap: 10px; }
+  .operation-head h1 { font-size: 14px; max-width: 46vw; }
+  .operation-head .op-button { padding: 6px 10px; font-size: 11.5px; }
+  .operation-levels { grid-template-columns: minmax(0, 1fr) 210px; }
+  .operation-level-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-auto-rows: 150px;
+    gap: 10px;
+    padding: 12px;
+  }
+  .operation-level img { height: 100px; }
+  .operation-level span { padding: 5px 8px; }
+  .operation-level small { font-size: 10px; }
+  .operation-level-detail { padding: 12px; gap: 8px; }
+  .operation-level-detail h2 { font-size: 15px; }
+  .operation-level-detail p { font-size: 11.5px; }
+  .operation-team { grid-template-columns: 46px minmax(0, 1fr) 208px; }
+  .operation-professions { padding: 6px 4px; gap: 3px; }
+  .operation-professions .op-button { padding: 2px; font-size: 11px; }
+  .operation-roster { padding: 8px; gap: 8px; }
+  .operation-operators { grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+  .operation-operator b { font-size: 11px; margin: 2px 4px 0; }
+  .operation-operator small { font-size: 9px; margin: 0 4px; }
+  .operation-team-side { padding: 8px; }
+  .operation-selected { gap: 4px; }
+  .operation-selected-slot { min-height: 32px; }
+  .operation-selected-slot img { width: 28px; height: 28px; }
+  .operation-loadout { margin-top: 8px; padding-top: 6px; }
+  .operation-loadout h3 { font-size: 12.5px; }
+  .operation-skill-description { max-height: 84px; font-size: 11.5px; }
+
+  /* --- B6. 教程页：目录横排一行，正文卡片紧凑 --- */
+  .help__toc { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 2px; scrollbar-width: none; }
+  .help__toc::-webkit-scrollbar { display: none; }
+  .help__toc a { flex: 0 0 auto; padding: 5px 10px; font-size: 11px; }
+  .help__body { gap: 10px; }
+  .help__sec { padding: 10px 12px; border-radius: 6px; }
+  .help__sec h2 { font-size: 13.5px; padding-bottom: 5px; margin-bottom: 4px; }
+  .help__intro, .help__items > li { font-size: 11.5px; line-height: 1.6; }
+  .help__items { gap: 5px; padding-left: 15px; }
+
+  /* --- B7. 干员详情页：左列表右详情，两栏各自滚 --- */
+  .ops__layout { grid-template-columns: minmax(150px, 200px) 1fr; gap: 10px; }
+  .ops__bar { gap: 6px; }
+  .ops__search { flex: 1 1 120px; min-width: 110px; padding: 6px 10px; font-size: 12px; }
+  .ops__only { font-size: 11px; }
+  .ops__count { font-size: 10.5px; }
+  .ops__reset, .ops__mini { padding: 5px 9px; font-size: 11px; min-height: 30px; }
+  .ops__list { max-height: calc(100dvh - 168px); padding: 4px; }
+  .ops__item { padding: 5px 8px; font-size: 11.5px; }
+  .ops__detail { max-height: calc(100dvh - 168px); overflow: auto; }
+  .ops__detail :is(h3, h4) { font-size: 12.5px; }
+  .ops__row select { min-height: 30px; font-size: 12px; }
+  .ops__potgrid { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; }
+  .ops__potcell { padding: 4px 5px; font-size: 10.5px; }
+  .ops__potcell > b { font-size: 12px; }
+
+  /* --- B8. 子职业图标 / 头像这类小图统一成整数像素，避免半像素发虚 --- */
+  :is(.ops, .help, .menu-screen) img { image-rendering: auto; }
+}
+
+/* ---- C. 手机竖屏：单列 + 纵向滚动 ------------------------------------------------------ */
+@media (orientation: portrait) and (max-width: 720px) {
+  :root { --r-gap: 12px; --r-pad: 14px; }
+
+  .menu-screen .menu__content { padding: 58px var(--r-pad) 24px; justify-content: flex-start; min-height: 0; }
+  .menu-screen .menu__heading { text-align: left; margin-bottom: 14px; }
+  .menu-screen .menu__heading h1 { font-size: 26px; }
+  .menu-screen .menu__brand { display: none; }
+  .menu-screen .menu__primary { grid-template-columns: 1fr; gap: 10px; }
+  .menu-screen .menu__primary > .menu-card:nth-child(n) { margin-top: 0; min-height: 0; }
+  .menu-screen .menu-card__art { height: 72px; margin: 8px 0; }
+  .menu-screen .menu-card__body strong { font-size: 17px; }
+  .menu-screen .menu-card__body > span { font-size: 12px; }
+  .menu-screen .menu__secondary { grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+  .menu-screen .menu-mini { padding: 10px 12px; }
+  .menu-screen .menu-mini small { display: block; font-size: 10.5px; }
+
+  .ops__layout { grid-template-columns: 1fr; gap: 10px; }
+  .ops__list { max-height: 30dvh; }
+  .ops__detail { max-height: none; }
+
+  .saves__layout { grid-template-columns: 1fr; gap: 10px; }
+  .saves__list { grid-template-columns: 1fr 1fr; max-height: 34dvh; }
+  .settings__sections { grid-template-columns: 1fr; }
+
+  .operation-levels { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .operation-level-detail { border-left: 0; border-top: 1px solid #4d5b59; max-height: 38dvh; }
+  .operation-team { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; }
+  .operation-professions { grid-template-rows: none; grid-template-columns: repeat(9, minmax(0, 1fr)); padding: 6px; }
+  .operation-team-side { border-left: 0; border-top: 1px solid #4b5b55; max-height: 40dvh; }
+}
+
+/* ---- D. 平板（大屏但仍是触摸）：收束，不要铺满 ------------------------------------------ */
+@media (min-width: 900px) and (pointer: coarse) {
+  :root { --r-gap: 16px; --r-pad: 28px; --r-fs-title: 22px; }
+
+  .menu-screen .menu__content { width: min(100%, 1180px); padding: 72px 32px 36px; }
+  .menu-screen .menu__primary { gap: 18px; }
+  .menu-screen .menu__primary > .menu-card--hero { min-height: 360px; }
+  .menu-screen .menu-card__body strong { font-size: 21px; }
+  .menu-screen .menu-card__art { height: clamp(120px, 16vh, 170px); }
+
+  .ops, .help { width: min(100%, 1180px); }
+  .saves { width: min(92vw, 900px); }
+}
+
+/* ---- E. 大屏 / 桌面：内容居中，行宽别拉成一条线 ---------------------------------------- */
+@media (min-width: 1400px) and (pointer: fine) {
+  .menu-screen .menu__content { width: min(100%, 1180px); }
+  .ops, .help { width: min(100%, 1240px); }
+  .operation-level-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+}
+
+/* ---- G. 关卡编辑器：手机 / 平板的分档 ------------------------------------------------
+   .lv-stage 在 level.css 里是 `display:grid; grid-template-columns: minmax(0,1fr) 316px`。
+   以前 mobile-fit 的手机档写的是 `flex-direction:row` —— 对 grid 容器完全无效，
+   所以手机上侧栏一直占着 316px，800px 宽只给画布留下 480px，21 列格子每格 22px，
+   点不中；这是「沙盒编辑界面很难用」的主要来源。这里统一用 grid 列宽来管。 */
+@media (max-width: 900px), (max-height: 620px) {
+  /* 手机横屏：画布优先，侧栏收到 200px；竖屏交给下面那条单列规则 */
+  .lv .lv-stage {
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 8px;
+    padding: 6px 8px 10px;
+    /* 高度交给 .lv-workspace--editor 的 grid 行（auto auto minmax(0,1fr) auto），
+       别再写死 calc(100dvh - 106px)：头部和工具条换行后高度会变，写死就溢出。 */
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .lv .lv-side { width: auto; }
+  .lv .lv-side > section { padding: 8px; }
+  .lv .lv-side h2 { font-size: 12px; }
+  /* 工具栏按钮换成能换行的紧凑排布，别挤成一条被裁掉的横线 */
+  .lv .lv-toolbar { flex-wrap: wrap; gap: 5px; padding: 6px 8px; }
+  .lv .lv-toolbar .lv-btn { min-height: 32px; padding: 5px 9px; font-size: 12px; }
+  .lv .lv-enemy-button { max-width: 110px; }
+}
+
+@media (orientation: portrait) and (max-width: 760px) {
+  /* 竖屏：地图在上、属性面板在下，各自占一半，都能滚 */
+  .lv .lv-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 44%);
+    gap: 8px;
+  }
+  .lv .lv-map { aspect-ratio: 21 / 19; }
+  .lv .lv-side { overflow: auto; }
+}
+
+/* ---- F. 页面与面板的过渡动画 ------------------------------------------------------------
+   原来只有跨文档的 View Transition（terminal.css），面板开合、列表出现都是硬切。
+   这里补一层轻量的、可被「减少动态效果」整体关掉的过渡，风格沿用原来的 160~220ms 缓动。 */
+@keyframes r-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes r-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes r-pop-in {
+  from { opacity: 0; transform: scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 主菜单卡片 / 教学区块：入场上浮，错开一点，别整块一起动 */
+.menu-screen .menu__primary > .menu-card,
+.menu-screen .menu__secondary > .menu-mini,
+.help__sec,
+.ops__detail > * {
+  animation: r-fade-up 220ms cubic-bezier(.22, .68, .22, 1) both;
+}
+.menu-screen .menu__primary > .menu-card:nth-child(2) { animation-delay: 40ms; }
+.menu-screen .menu__primary > .menu-card:nth-child(3) { animation-delay: 80ms; }
+.menu-screen .menu__secondary > .menu-mini:nth-child(2) { animation-delay: 40ms; }
+
+/* 面板类（设置 / 存档 / 选人 / 详情卡）打开时轻微放大淡入，关闭时靠原有 transition 收回 */
+:is(.saves[open], .hud__picker.is-on .pk, .hud__detail.is-on, .operation-dialog[open]) {
+  animation: r-pop-in 180ms cubic-bezier(.22, .68, .22, 1) both;
+}
+
+/* 列表项逐个淡入：只对前 24 项加延迟，避免长列表卡住渲染 */
+:is(.pk__grid, .operation-operators, .ops__list, .lv-list) > *:nth-child(-n+24) {
+  animation: r-fade-in 180ms ease-out both;
+}
+:is(.pk__grid, .operation-operators, .ops__list, .lv-list) > *:nth-child(1) { animation-delay: 0ms; }
+:is(.pk__grid, .operation-operators, .ops__list, .lv-list) > *:nth-child(n+2):nth-child(-n+6) { animation-delay: 20ms; }
+:is(.pk__grid, .operation-operators, .ops__list, .lv-list) > *:nth-child(n+7):nth-child(-n+12) { animation-delay: 40ms; }
+:is(.pk__grid, .operation-operators, .ops__list, .lv-list) > *:nth-child(n+13):nth-child(-n+24) { animation-delay: 60ms; }
+
+/* 按钮按下反馈：手机上没有 hover，靠 active 给手感 */
+@media (pointer: coarse) {
+  :is(.menu__button, .op-button, .lv-btn, .dbtn, .cap, .menu-card, .menu-mini, .pk__op,
+    .dr__tab, .place, .chip, .saves__slot, .operation-level, .operation-operator):active {
+    transform: scale(.975);
+    transition: transform 90ms ease-out;
+  }
+}
+
+/* 系统或用户开了「减少动态效果」：上面的动画全部关掉（设置里的 checkbox 也会写 data-motion） */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion="reduce"] *,
+  :root[data-motion="reduce"] *::before,
+  :root[data-motion="reduce"] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+:root[data-motion="reduce"] .menu-screen .menu__primary > .menu-card,
+:root[data-motion="reduce"] .menu-screen .menu__secondary > .menu-mini,
+:root[data-motion="reduce"] .help__sec,
+:root[data-motion="reduce"] .ops__detail > *,
+:root[data-motion="reduce"] :is(.pk__grid, .operation-operators, .ops__list, .lv-list) > * {
+  animation: none !important;
+}

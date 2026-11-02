@@ -697,7 +697,7 @@ async function unpackSkins(btn) {
   if (!charId) { setStatus('这位干员没有 charId，解不出皮肤', true); return; }
   const shell = window.AndroidShell;
   if (!shell || typeof shell.extractSkins !== 'function') {
-    setStatus('皮肤解包只能在 App 里用（浏览器里没有本机资源）', true);
+    setStatus('皮肤解包只能在应用里用（当前没有本机资源）', true);
     return;
   }
   const label = btn.textContent;

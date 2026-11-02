@@ -1,6 +1,9 @@
 package com.arksim.app;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
+import android.provider.MediaStore;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -20,6 +23,7 @@ import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.ValueCallback;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -61,6 +65,10 @@ public class MainActivity extends Activity {
 
     /** WindowInsetsController（API 30+）。 */
     private Object controller;
+
+    /** <input type="file"> 的回调；WebView 不实现 onShowFileChooser 时点它完全没反应。 */
+    private ValueCallback<Uri[]> fileChooserCallback;
+    private static final int REQ_FILE_CHOOSER = 4301;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -221,9 +229,15 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        // 让 WebView 自己横向撑满，别按内容宽度收缩留边
+        // 视口策略（全站字号的总开关，别乱动）：
+        //   setUseWideViewPort(true)  —— 让页面里 <meta viewport> 生效，布局视口 = 设备 CSS 宽度；
+        //     关掉它 WebView 会退回 980px 的桌面视口，theme.css 的 100vw 就变成 980，
+        //     1rem 被算成 ~51px（手机本该 ~33px），整套 rem 布局等比放大 → 看起来「整个页面都很大」。
+        //   setLoadWithOverviewMode(false) —— 不要为了「一眼看全」把整页再缩放一次；
+        //     手机横屏时它会把 441px 高的布局压进 360px 的可视区，字号跟着一起缩，反而更小更难读。
         s.setUseWideViewPort(true);
-        s.setLoadWithOverviewMode(true);
+        s.setLoadWithOverviewMode(false);
+        // 初始缩放交给 WebView 按视口自己算（v.setInitialScale 默认就是 0），不必显式调。
         v.setBackgroundColor(Color.BLACK);
         v.setWebViewClient(new WebViewClient() {
             @Override
@@ -253,6 +267,29 @@ public class MainActivity extends Activity {
             public boolean onJsPrompt(WebView view, String url, String message, String defaultValue,
                                       JsPromptResult result) {
                 jsDialog(message, null, new Object[]{result, defaultValue == null ? "" : defaultValue});
+                return true;
+            }
+
+            /**
+             * 关卡制作器的「导入 JSON」是 <input type="file">。
+             * WebView 默认不实现这个回调，点上去毫无反应 —— 所以必须接出来，
+             * 用系统文件选择器挑一个 json，再把 Uri 交回去。
+             */
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
+                                             FileChooserParams params) {
+                if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
+                fileChooserCallback = callback;
+                Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
+                pick.addCategory(Intent.CATEGORY_OPENABLE);
+                pick.setType("*/*");
+                pick.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/plain"});
+                try {
+                    startActivityForResult(Intent.createChooser(pick, "选择关卡 JSON"), REQ_FILE_CHOOSER);
+                } catch (ActivityNotFoundException e) {
+                    fileChooserCallback = null;
+                    callback.onReceiveValue(null);
+                }
                 return true;
             }
         });
@@ -634,6 +671,48 @@ public class MainActivity extends Activity {
         public String arkDirProbe() {
             return ShizukuBridge.arkDirProbe();
         }
+
+        /**
+         * 关卡制作器的「导出」。
+         *
+         * 网页里 `a[download] + Blob` 那套在 WebView 里不会真正落盘（没有
+         * DownloadListener，也不会弹任何东西），点了像没反应。所以走这里：
+         * API 29+ 用 MediaStore 写进系统「下载」目录（文件管理器里能找到），
+         * 更老的系统写进应用专属外部目录。返回一句话给页面 toast。
+         */
+        @JavascriptInterface
+        public String saveText(String name, String text) {
+            String safe = name == null || name.trim().isEmpty() ? "level" : name.trim();
+            safe = safe.replaceAll("[\\\\/:*?\"<>|\\x00-\\x1f]", "_");
+            if (!safe.endsWith(".json")) safe += ".json";
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.Downloads.DISPLAY_NAME, safe);
+                    cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                    cv.put(MediaStore.Downloads.RELATIVE_PATH, "Download");
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (uri == null) return "保存失败：系统没有给出可写的下载位置";
+                    try (java.io.OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        if (out == null) return "保存失败：写不进下载目录";
+                        out.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        out.flush();
+                    }
+                    return "已保存到「下载」：" + safe;
+                }
+                File dir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
+                if (dir == null) dir = getFilesDir();
+                if (!dir.exists() && !dir.mkdirs()) return "保存失败：建不了目录";
+                File out = new File(dir, safe);
+                try (java.io.OutputStreamWriter w = new java.io.OutputStreamWriter(
+                        new java.io.FileOutputStream(out), java.nio.charset.StandardCharsets.UTF_8)) {
+                    w.write(text);
+                }
+                return "已保存到：" + out.getAbsolutePath();
+            } catch (Throwable t) {
+                return "保存失败：" + t.getMessage();
+            }
+        }
     }
 
     private static String quote(String s) {
@@ -766,6 +845,22 @@ public class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         // 系统栏被临时唤出来后（下滑），重新回到沉浸式
         if (hasFocus) hideSystemBars();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_FILE_CHOOSER) {
+            Uri[] result = null;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                result = new Uri[]{data.getData()};
+            }
+            if (fileChooserCallback != null) {
+                fileChooserCallback.onReceiveValue(result);
+                fileChooserCallback = null;
+            }
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
