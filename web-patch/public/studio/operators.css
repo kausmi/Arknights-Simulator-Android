@@ -193,6 +193,7 @@
 .ops__custom-list li small { flex: 1; min-width: 0; color: #6f7a74; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #ops-custom-host { margin-bottom: 14px; }
+#ops-custom-host:empty { margin-bottom: 0; }
 
 /* 手机上：自定义表单整体单列，按钮拉满 */
 @media (max-height: 620px), (max-width: 720px) {

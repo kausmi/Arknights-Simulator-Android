@@ -160,3 +160,213 @@
   .sb .hud__dock { flex-wrap: wrap; }
   .lv .lv-body { overflow-y: auto; }
 }
+
+/* ---- G. 终端顶栏（返回 / 主菜单 / 五个工作区页签）：手机横屏必须收窄 ---------------------
+   根因：sandbox/terminal.css:19 写死 `.terminal-header { height: 90px }`，而
+   `.terminal-tab.is-current { height: 64px }`。手机横屏的 CSS 视口只有 800×360 左右，
+   90px 就吃掉整屏高度的 25%，下面 8×17 的沙盒预览图直接被裁到屏幕外 ——
+   这就是「沙盒编辑界面的左上角按钮超出界面 / UI 过大」的直接原因。
+   注：menu-fit.css 里有同类规则，但它全部挂在 :root[data-menu-theme] 上，
+   而沙盒/编辑器页面并不设置该属性（只有主菜单与设置页设），所以那条一模一样的
+   紧凑档在这两个页面从来没生效过。这里不依赖任何根属性，按视口高度直接生效。 */
+@media (max-height: 700px), (max-width: 900px) {
+  .terminal-chrome .terminal-header {
+    height: 58px;
+    padding: 8px 12px 0;
+    gap: 10px;
+  }
+  .terminal-chrome .terminal-tabs { gap: 4px; }
+  .terminal-chrome .terminal-tab {
+    width: auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    height: 38px;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .terminal-chrome .terminal-tab.is-current { height: 46px; }
+  .terminal-chrome .terminal-tab svg { width: 17px; height: 17px; }
+  .terminal-chrome .terminal-tab.is-current svg { transform: scale(1.05); }
+  .terminal-chrome .terminal-tab.is-current::after { left: 8px; right: 8px; bottom: 4px; }
+  .terminal-chrome .terminal-history { gap: 6px; flex: none; }
+  .terminal-chrome .terminal-history :is(a, button) { padding: 5px 6px; font-size: 11px; }
+  .terminal-chrome .terminal-header__end { display: none; }
+
+  /* 顶栏收窄后，底下的存档预览 / 编辑器头部要跟着上移，否则留一大块空白 */
+  .sandbox-entry { padding: 72px 3vw 74px; }
+  body[data-terminal-mode] .operation-screen { padding-top: 66px; }
+  .lv-workspace > .lv-head { padding-top: 66px !important; }
+}
+
+/* 页签文字永不折行 —— 否则窄屏下「自由沙盒」会被压成竖排并撑破 46px 高的板子 */
+.terminal-chrome .terminal-tab span { white-space: nowrap; }
+
+/* 极矮（手机横屏 360px 级）：非当前页签只留图标，避免挤压返回按钮；
+   当前页签保留文字（它是当前位置标识），并且给足宽度不让它折行。 */
+@media (max-height: 460px) {
+  .terminal-chrome .terminal-tab { padding: 0 11px; }
+  .terminal-chrome .terminal-tab:not(.is-current) span { display: none; }
+  .terminal-chrome .terminal-tab.is-current { padding: 0 12px; gap: 6px; flex: 0 0 auto; }
+}
+
+/* ---- H. 沙盒工作区顶栏（←开始菜单 / 新建地图 / 管理存档 / 快存）：不得溢出、不得裁字 ---
+   两个独立问题叠在一起：
+     1) `.sb .hud__workspace` 是 flex 横排，内边距写死 .12rem/.14rem，手机横屏（800 CSS px）
+        四个按钮加上左侧的转向键就顶出屏幕右缘 —— 用户报的「快存、新建地图超出界面」。
+     2) 按钮高度 .42rem、字号 max(10px,.11rem)：1rem 被降到 32px 后 .42rem 只有 13px，
+        而字体下限 max() 仍撑到 10px+，于是文字上半截被 height + overflow 裁掉 ——
+        用户报的「字被吞完了」。
+   这里改用固定 px、显式 line-height 与 align-items:center，宽度不够时可横向滚动。 */
+@media (max-height: 700px), (max-width: 900px) {
+  .sb .hud__workspace {
+    left: 8px;
+    top: 6px;
+    height: 40px;
+    max-width: calc(100vw - 92px);          /* 右边给 1x / 暂停 / 设置那一排留位置 */
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+    border-left-width: 2px;
+  }
+  .sb .hud__workspace::-webkit-scrollbar { display: none; }
+  .sb .hud__workspace > * { flex: none; }
+  /* 关键：所有按钮统一成「定高 + 垂直居中 + 不换行」，文字就不再被裁 */
+  .sb .hud__workspace :is(button, a) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 0;
+    padding: 0 10px;
+    line-height: 1;
+    white-space: nowrap;
+    font-size: 12px;
+    font-family: var(--font-cjk);
+  }
+  .sb .hud__workspace .workspace__brand { padding: 0 10px; gap: 6px; font-size: 15px; line-height: 1; }
+  .sb .hud__workspace .workspace__brand span { display: inline; font-size: 12px; line-height: 1; }
+  .sb .hud__workspace .workspace__save { padding: 0 10px; font-size: 12px; }
+  .sb .hud__workspace .workspace__save span { display: inline; margin-left: 5px; font-size: 11px; opacity: .75; }
+  .sb .hud__workspace .workspace__maps { display: block; padding: 0 10px; font-size: 12px; }
+  .sb .hud__workspace .workspace__quick { padding: 0 10px; font-size: 12px; }
+
+  /* 顶栏收窄后，战场读数条与右侧危险区整体上移 */
+  .sb .hud__top { top: 52px; }
+  .sb .hud__danger { top: 94px; }
+}
+
+/* ---- I. 沙盒左侧工具箱：手机上重排成「横排按钮 = 左图标 + 右文字」----------------------
+   原来的布局在手机上完全散架，原因是三件事同时发生：
+     a) `.dr__panel { width: 3.55rem }` —— 1rem 降到 32px 后只有 113px 宽，任何中文都放不下
+     b) `.dr__tab` 是 flex-direction: column（图标在上、文字在下），两字标签被压成竖排
+     c) `.place` 也是 column + grid 四列，四列 × 113px 面板 = 每个 26px，字全部溢出被裁
+   这里统一改成：面板给足宽度（按视口 vw），所有按钮一律 row 横排、左图标右文字、
+   一个按钮一个独立边框，字号固定 px 不受 rem 缩放影响。 */
+@media (max-height: 700px), (max-width: 900px) {
+  /* 工具箱整体位置与最大高度：以前 68vh 在 360px 高的屏上只剩 245px，内容必然被压扁 */
+  .sb .hud__drawer { top: 52px; max-height: calc(100vh - 60px); }
+  .sb .hud:has(.hud__detail.is-on) .hud__drawer { top: 52px; max-height: calc(100vh - 60px); }
+
+  /* 左侧竖排的「敌人 / 地形」两个页签：横排，图标在左、文字在右 */
+  .sb .dr__tabs { padding: 4px; gap: 4px; }
+  .sb .dr__tab {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    width: auto;
+    min-width: 76px;
+    height: 40px;
+    padding: 0 10px;
+    font-size: 13px;
+    line-height: 1;
+    border-left-width: 3px;
+  }
+  .sb .dr__tab span { font-size: 13px; letter-spacing: .02em; white-space: nowrap; }
+  .sb .dr__tab .icon { width: 17px; height: 17px; flex: none; }
+
+  /* 面板：宽度按视口给，不再是 113px 的死宽 */
+  .sb .hud__drawer.is-open .dr__panel { width: min(52vw, 330px); }
+  .sb .dr__inner { gap: 8px; padding: 10px; }
+
+  .sb .dr__head { font-size: 13px; padding-bottom: 6px; }
+  .sb .dr__head small { font-size: 11px; }
+  .sb .dr__hint { font-size: 11.5px; line-height: 1.6; }
+
+  /* 四个投放方式：两列，每个按钮自己一个框，图标左文字右 */
+  .sb .placegrid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .sb .place {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 7px;
+    min-height: 38px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    line-height: 1.2;
+    text-align: left;
+    border: 1px solid var(--hair-2);
+    border-radius: 4px;
+  }
+  .sb .place i { font-size: 16px; line-height: 1; flex: none; }
+  .sb .place span { white-space: nowrap; }
+
+  /* 筛选项：也横排，一个框一个 */
+  .sb .chips { gap: 6px; }
+  .sb .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 5px 11px;
+    font-size: 12px;
+    line-height: 1;
+    border: 1px solid var(--hair-2);
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .sb .cont { min-height: 32px; padding: 5px 9px; font-size: 12px; gap: 6px; border-radius: 4px; }
+  .sb .cont input { width: 15px; height: 15px; }
+
+  /* 敌人网格：面板变宽后三列刚好，卡片不再挤成一团 */
+  .sb .egrid-wrap { max-height: 34vh; }
+  .sb .egrid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .sb .ecard { min-height: 62px; padding: 5px; font-size: 11px; }
+  .sb .ecard img { width: 34px; height: 34px; }
+  .sb .ecard span { font-size: 11px; line-height: 1.15; }
+
+  /* 底部操作按钮（确定删除 / 取消 / 结束路线 …）：横排、各自成框 */
+  .sb .dr__row { gap: 6px; }
+  .sb .dbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    line-height: 1;
+    border: 1px solid var(--hair-2);
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .sb .dr__foot { gap: 8px; }
+}
+
+/* ---- J. 战场右上角那一排（1x / 2x / 暂停 / 设置 / 扣费 / 重置演练）------------------- */
+@media (max-height: 700px), (max-width: 900px) {
+  .sb .hud__caps { top: 8px; right: 8px; gap: 5px; }
+  .sb .caps { padding: 4px; gap: 4px; }
+  .sb :is(.cap, .hud__caps button) {
+    min-height: 34px;
+    min-width: 34px;
+    padding: 0 9px;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+}

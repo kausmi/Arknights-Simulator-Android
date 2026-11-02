@@ -61,9 +61,13 @@
       <button type="button" class="ops__reset" id="ops-reset-all" disabled>全部还原</button>
     </div>
 
+    <!-- 自定义干员表单挂在列表上方整行显示。
+         它原来是 .ops__layout（两列 grid）的第三个子元素，把详情面板挤到了第二行的左半边 ——
+         这就是「调整数值的面板怎么还在塞下面、不是应该左右两半分屏吗」的真正原因。 -->
+    <div id="ops-custom-host"></div>
+
     <div class="ops__layout">
       <ul class="ops__list" id="ops-list" role="listbox" aria-label="干员列表"></ul>
-      <div id="ops-custom-host"></div>
       <section class="ops__detail" id="ops-detail">
         <p class="ops__hint">从左边选一个干员。</p>
       </section>

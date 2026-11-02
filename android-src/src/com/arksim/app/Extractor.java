@@ -7,12 +7,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 把「用 Shizuku 身份拉起 python，直读手机本地方舟 bundle，解包到本 App 的 public/assets/local」
- * 这套流程包起来。
+ * 把「用 Shizuku 身份拉起 python，直读手机本地方舟 bundle，解包进本 App」这套流程包起来。
  *
- * 关键点：python 进程是 shell 身份起的，所以它 open /storage/emulated/0/Android/data/
- * com.hypergryph.arknights/files/Bundles/... 是**直接读**，中间不写任何压缩包或副本；
- * 产出直接写进 com.arksim.app 自己的外部专属目录（shell 身份对该目录有 ext_data_rw）。
+ * ── 为什么分两步走 ───────────────────────────────────────────────
+ * 用户的要求是「直接读取，不要提取到手机任何可读目录，不然手机里全是照片」。
+ * 也就是说解出来的干员头像立绘**绝不能**落在
+ *   /storage/emulated/0/Android/data/com.arksim.app/files/...
+ * 这种相册 / 文件管理器 / 媒体选择器能扫到的地方，而必须进
+ *   /data/user/0/com.arksim.app/files/...      （App 私有内部目录，卸载才消失）
+ *
+ * 可是 python 是 shell 身份（uid 2000）起的，它写不进私有目录（父目录 0700 +
+ * SELinux untrusted_app_data_file）。两头卡住，所以走中转：
+ *
+ *   1) python **直接 open 方舟的 .ab**（不复制、不打包），把解出的图写进
+ *      /data/local/tmp/arksim-out（shell 自己的暂存区，不受媒体扫描，也不是
+ *      相册 / 媒体选择器能读到的位置）；
+ *   2) 解完立刻 `tar cf - -C <暂存> .`，本类从 stdout 流式解进私有目录；
+ *   3) 删掉暂存。
+ *
+ * 中间产物只在一台设备的 shell 临时目录里存在几秒，媒体库里什么都不会出现；
+ * 最终产物在 App 私有沙盒内，只有本 App 自己（和 HTTP 服务的 127.0.0.1 端口）能读到。
  */
 public final class Extractor {
 
@@ -21,13 +35,14 @@ public final class Extractor {
         void onLine(String line);
     }
 
-    private final File runtime;   // <externalFiles>/rt  （含 py/ 与 extract/）
-    private final File webDir;    // web 根（里面有 public/ 与 data/）
-    private final File outDir;    // web/public/assets/local
-    private final File manifest;  // web/data/local-assets.json
+    private final File runtime;   // <externalFiles>/rt  （含 py/ 与 extract/，shell 可读）
+    private final File webDir;    // web 根（私有目录），最终产物与网页资源都在这里
 
     /** shell 身份可执行的位置：/sdcard 是 FUSE noexec，只有这里能跑 ELF。 */
     private static final File STAGE = new File("/data/local/tmp/arksim-rt");
+
+    /** python 的写盘暂存（shell 暂存区，没有媒体扫描器会看这里）。 */
+    private static final File TMP_OUT = new File("/data/local/tmp/arksim-out");
 
     /**
      * 版本戳文件名。
@@ -40,11 +55,17 @@ public final class Extractor {
      */
     private static final String STAMP_NAME = ".stamp";
 
+    /**
+     * @param runtime <externalFiles>/rt
+     * @param webDir  web 根（在 App 私有目录里），提取产物最终落它下面的 public/assets
+     */
     public Extractor(File runtime, File webDir) {
         this.runtime = runtime;
         this.webDir = webDir;
-        this.outDir = new File(webDir, "public/assets/local");
-        this.manifest = new File(webDir, "data/local-assets.json");
+    }
+
+    public File assetsRoot() {
+        return new File(webDir, "public/assets");
     }
 
     /**
@@ -71,7 +92,7 @@ public final class Extractor {
     }
 
     private static String readText(File f) {
-        try (java.io.InputStream in = new java.io.FileInputStream(f)) {
+        try (InputStream in = new java.io.FileInputStream(f)) {
             java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
             byte[] buf = new byte[256];
             int n;
@@ -93,16 +114,11 @@ public final class Extractor {
         Process p = ShizukuBridge.process(cmd, new String[]{"PATH=/system/bin:/system/xbin"}, "/data/local/tmp");
         pump(p.getInputStream(), cb);
         pump(p.getErrorStream(), cb);
-        int code = p.waitFor();
-        if (code != 0) throw new IOException("shell 命令失败（退出码 " + code + "）：" + String.join(" ", cmd));
-        return code;
+        return p.waitFor();
     }
 
     /**
-     * 跑一次完整提取（默认那套 --only 组合，覆盖沙盒用到的全部美术）。
-     *
-     * @param only 附加的 --only 组；传空则用默认组合
-     * @return 进程退出码（0 表示成功）
+     * 跑一次完整提取：方舟 bundle → 暂存 → tar 流 → App 私有目录。
      */
     public int run(List<String> only, Progress cb) throws Exception {
         File stage = prepare(cb);
@@ -123,20 +139,6 @@ public final class Extractor {
             groups.addAll(only);
         }
 
-        List<String> cmd = new ArrayList<>();
-        cmd.add(pyBin.getAbsolutePath());
-        cmd.add(new File(ex, "extract.py").getAbsolutePath());
-        cmd.add("--game");
-        cmd.add(ShizukuBridge.arkBundles());
-        cmd.add("--out");
-        cmd.add(outDir.getAbsolutePath());
-        cmd.add("--manifest");
-        cmd.add(manifest.getAbsolutePath());
-        for (String g : groups) {
-            cmd.add("--only");
-            cmd.add(g);
-        }
-
         String libPath = py.getAbsolutePath() + ":" + new File(py, "lib").getAbsolutePath();
         String[] env = {
                 "PYTHONHOME=" + py.getAbsolutePath(),
@@ -147,32 +149,125 @@ public final class Extractor {
                 "PYTHONDONTWRITEBYTECODE=1",
         };
 
-        if (!outDir.isDirectory() && !outDir.mkdirs()) {
-            throw new IOException("建不出输出目录：" + outDir);
+        // 暂存先清空，保证这次 tar 回流的东西全是本次产物。
+        runShell(new String[]{"sh", "-c", "rm -rf '" + TMP_OUT.getAbsolutePath() + "'"}, cb);
+        runShell(new String[]{"sh", "-c", "mkdir -p '" + TMP_OUT.getAbsolutePath() + "'"}, cb);
+
+        // ── 第一步：棋盘 / UI / 弹道 / 模块这几类美术 ─────────────────
+        List<String> cmd = new ArrayList<>();
+        cmd.add(pyBin.getAbsolutePath());
+        cmd.add(new File(ex, "extract.py").getAbsolutePath());
+        cmd.add("--game");
+        cmd.add(ShizukuBridge.arkBundles());
+        cmd.add("--out");
+        cmd.add(new File(TMP_OUT, "local").getAbsolutePath());
+        cmd.add("--manifest");
+        cmd.add(new File(TMP_OUT, "local-assets.json").getAbsolutePath());
+        for (String g : groups) {
+            cmd.add("--only");
+            cmd.add(g);
         }
-        File parent = manifest.getParentFile();
-        if (parent != null && !parent.isDirectory()) parent.mkdirs();
+        int code = exec(py, cmd, env, cb);
+        if (code != 0) {
+            drainTmp(cb);
+            return code;
+        }
 
-        Process p = ShizukuBridge.process(cmd.toArray(new String[0]), env, py.getAbsolutePath());
-        pump(p.getInputStream(), cb);
-        pump(p.getErrorStream(), cb);
-        int code = p.waitFor();
-        if (code != 0) return code;
-
-        // 第二步：读「本机当前版本有哪些干员」，并把 2D 小人索引出来。
-        // 这一步让干员列表跟着游戏更新走 —— 源是 skinpack/（文件名就是 charId），
-        // 不依赖解析数据表，游戏一出新干员就自动出现在列表里。
+        // ── 第二步：干员列表 + 2D 小人索引 ───────────────────────────
+        // 源是 skinpack/（文件名就是 charId），不依赖解析数据表，
+        // 游戏一出新干员就自动出现在列表里。
         int roster = readRoster(py, ex, env, cb);
 
-        // 第三步：干员头像 / 立绘。网页的 data/assets.json 给每个干员登记了
+        // ── 第三步：干员头像 / 立绘 ─────────────────────────────────
+        // 网页的 data/assets.json 给每个干员登记了
         // /assets/char/{avatar,portrait,illust}/<id>[_1|_2].png，但这些目录原先根本不存在，
-        // 于是所有人都是灰剪影。这里从 chararts/<charId>.ab 把 Texture2D 解出来直接按登记路径写。
-        // 放最后是因为它最慢（467 个 bundle，十几个 G 的贴图逐个解），但漏了它整个界面就是没图的。
+        // 于是所有人都是灰剪影。这里从 chararts/<charId>.ab 把 Texture2D 解出来按登记路径写。
         int art = extractOperatorArt(py, ex, env, cb);
+
+        // 全部写完，把暂存整体搬进私有目录并清空。
+        drainTmp(cb);
+
         return (roster != 0) ? roster : art;
     }
 
-    /** 调 extract_operator_art.py：把干员头像/立绘解到 web/public/assets/char/。 */
+    private int exec(File py, List<String> cmd, String[] env, Progress cb) throws Exception {
+        Process p = ShizukuBridge.process(cmd.toArray(new String[0]), env, py.getAbsolutePath());
+        pump(p.getInputStream(), cb);
+        pump(p.getErrorStream(), cb);
+        return p.waitFor();
+    }
+
+    /**
+     * 把 /data/local/tmp/arksim-out 整个 tar 回收到 App 私有目录，然后删掉暂存。
+     *
+     * <p>tar 由 shell 身份跑（它能读暂存、能读方舟 bundle），解包由本 App 自己写私有目录。
+     * 全过程不产生任何媒体可见文件。
+     */
+    private void drainTmp(Progress cb) throws Exception {
+        if (!TMP_OUT.isDirectory()) return;
+
+        cb.onLine("正在把提取结果转储进 App 私有目录…");
+        String[] cmd = {"sh", "-c", "cd '" + TMP_OUT.getAbsolutePath() + "' && tar cf - ."};
+        Process p = ShizukuBridge.process(cmd, new String[]{"PATH=/system/bin:/system/xbin"}, "/data/local/tmp");
+
+        final int[] wrote = {0};
+        try (InputStream raw = p.getInputStream()) {
+            wrote[0] = TarExtract.untar(raw, (path, size, mtime) -> mapEntry(path, size));
+        } catch (IOException e) {
+            cb.onLine("转储告警：" + e.getMessage());
+        }
+
+        int exit = p.waitFor();
+        if (exit != 0) cb.onLine("tar 退出码 " + exit + "（已转储 " + wrote[0] + " 个文件）");
+
+        cb.onLine("提取结果已转储进 App 私有目录（" + wrote[0] + " 个文件）");
+        runShell(new String[]{"sh", "-c", "rm -rf '" + TMP_OUT.getAbsolutePath() + "'"}, cb);
+    }
+
+    /**
+     * tar 条目的落点映射。暂存目录结构是：
+     * <pre>
+     *   local/...                    提取出的美术      → public/assets/local/...
+     *   public/assets/char/...       干员头像立绘      → public/assets/char/...
+     *   local-assets.json            manifest         → data/local-assets.json
+     *   operators-index.json         干员列表          → data/operators-index.json
+     * </pre>
+     *
+     * @return 目标文件；null 表示跳过（已存在且大小一致）
+     */
+    private File mapEntry(String path, long size) {
+        String p = path;
+        while (p.startsWith("./")) p = p.substring(2);
+
+        File target;
+        if (p.startsWith("local/")) {
+            target = new File(webDir, "public/assets/" + p);
+        } else if (p.startsWith("public/")) {
+            target = new File(webDir, p);
+        } else if (p.endsWith(".json") && !p.contains("/")) {
+            target = new File(webDir, "data/" + p);
+        } else {
+            // 其它（例如 skins/ 下的零散文件）：仍然进私有区，不丢。
+            target = new File(webDir, "public/assets/local/" + p);
+        }
+
+        if (target.isFile() && target.length() == size) return null;
+        File parent = target.getParentFile();
+        if (parent != null && !parent.isDirectory()) parent.mkdirs();
+        return target;
+    }
+
+    /** 提取是否已经有产出（manifest 存在即视为跑过）。 */
+    public boolean hasOutput() {
+        File f = new File(webDir, "data/local-assets.json");
+        return f.isFile() && f.length() > 0;
+    }
+
+    public File manifestFile() {
+        return new File(webDir, "data/local-assets.json");
+    }
+
+    /** 调 extract_operator_art.py：把干员头像/立绘解到暂存。 */
     private int extractOperatorArt(File py, File ex, String[] env, Progress cb) throws Exception {
         File script = new File(ex, "extract_operator_art.py");
         if (!script.isFile()) {
@@ -183,7 +278,7 @@ public final class Extractor {
                 new File(py, "python3.14").getAbsolutePath(),
                 script.getAbsolutePath(),
                 "--game", ShizukuBridge.arkBundles(),
-                "--web", webDir.getAbsolutePath(),
+                "--web", TMP_OUT.getAbsolutePath(),
         };
         Process p = ShizukuBridge.process(cmd, env, py.getAbsolutePath());
         pump(p.getInputStream(), cb);
@@ -198,38 +293,20 @@ public final class Extractor {
             cb.onLine("skip: read_roster.py 不在提取器目录里");
             return 0;
         }
-        File rosterDir = new File(outDir, "operators");
-        File indexFile = new File(dataDir(), "operators-index.json");
-        File parent = indexFile.getParentFile();
-        if (parent != null && !parent.isDirectory()) parent.mkdirs();
+        File indexFile = new File(TMP_OUT, "operators-index.json");
+        File skins = new File(TMP_OUT, "local/operators");
 
         String[] cmd = {
                 new File(py, "python3.14").getAbsolutePath(),
                 script.getAbsolutePath(),
                 "--game", ShizukuBridge.arkBundles(),
                 "--out", indexFile.getAbsolutePath(),
-                "--skins", rosterDir.getAbsolutePath(),
+                "--skins", skins.getAbsolutePath(),
         };
         Process p = ShizukuBridge.process(cmd, env, py.getAbsolutePath());
         pump(p.getInputStream(), cb);
         pump(p.getErrorStream(), cb);
         return p.waitFor();
-    }
-
-    /** 索引文件要写进 web 的 data 目录（服务端挂载点），不是提取产物目录。 */
-    private File dataDir() {
-        // manifest 在 <web>/data/local-assets.json，它的父目录就是 <web>/data
-        File parent = manifest.getParentFile();
-        return parent == null ? manifest : parent;
-    }
-
-    /** 提取是否已经有产出（manifest 存在即视为跑过）。 */
-    public boolean hasOutput() {
-        return manifest.isFile() && manifest.length() > 0;
-    }
-
-    public File manifestFile() {
-        return manifest;
     }
 
     private static void pump(final InputStream in, final Progress cb) {

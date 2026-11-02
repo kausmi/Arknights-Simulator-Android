@@ -113,8 +113,12 @@ export function assetSectionHtml(st) {
     <p class="settings__hint settings__assets-why">
       棋盘贴图、干员立绘、敌人模型这些官方美术不在公开资源里，只能从手机上的《明日方舟》里读。
       那个目录属于方舟自己，普通应用（含本应用、含「所有文件访问权限」）都读不到，
-      所以要借 <b>Shizuku</b> 拿到 shell 身份 —— 全程<b>只读</b>，不改动方舟的任何文件，
-      提取出的图片也只写在本应用自己的目录里。
+      所以要借 <b>Shizuku</b> 拿到 shell 身份 —— 全程<b>只读</b>，不改动方舟的任何文件。
+    </p>
+    <p class="settings__hint settings__assets-privacy">
+      解出来的图片<b>只存在 App 私有目录</b>（<code data-asset-path>/data/user/0/com.arksim.app/files/web</code>），
+      不进相册、不进媒体库、文件管理器也翻不到，卸载 App 就一起清掉。
+      提取时 python 只在自己的一次性临时目录里过一手，转存完立刻删除。
     </p>
     ${flavorSelectHtml(st)}
     ${steps.length ? `<p class="settings__hint settings__assets-todo">还差一步：${steps.join(' ')}</p>` : ''}
@@ -188,6 +192,16 @@ export function wireAssetSection(dialog) {
       if (btn) {
         btn.disabled = st.running;
         btn.textContent = st.running ? '正在提取…' : (st.ready ? '重新提取' : '开始提取');
+      }
+      // 把真实落地路径写出来（App 私有目录），让人一眼看到它不在相册里。
+      const pathEl = box.querySelector('[data-asset-path]');
+      if (pathEl) {
+        try {
+          const info = JSON.parse(window.AndroidShell.storageInfo() || '{}');
+          if (info.path) pathEl.textContent = info.path;
+        } catch {
+          /* 桌面 / 浏览器里没有 AndroidShell，保留默认文案 */
+        }
       }
     };
 

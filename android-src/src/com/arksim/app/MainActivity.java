@@ -16,10 +16,14 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.webkit.JsPromptResult;
+import android.webkit.JsResult;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -225,18 +229,83 @@ public class MainActivity extends Activity {
             }
         });
         v.addJavascriptInterface(new ShellBridge(), "AndroidShell");
+        // 必须给 WebChromeClient —— WebView 默认不带，window.alert/confirm/prompt
+        // 会被静默当成「用户点了取消」。页面里所有 confirm 包着的操作（重置演练、
+        // 新建空白沙盒、删除此存档、覆盖存档……）看起来就是「点了没反应」。
+        v.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                jsDialog(message, result, null);
+                return true;
+            }
+
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+                jsDialog(message, result, null);
+                return true;
+            }
+
+            @Override
+            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue,
+                                      JsPromptResult result) {
+                jsDialog(message, null, new Object[]{result, defaultValue == null ? "" : defaultValue});
+                return true;
+            }
+        });
+    }
+
+    /**
+     * 网页里的 alert / confirm / prompt 统一走这里。
+     *
+     * 显式指定 Theme_Material_Dialog_Alert：本 Activity 的 windowTheme 是
+     * Theme.Black.NoTitleBar.Fullscreen，用默认构造的 AlertDialog 会继承它，
+     * 在 Android 12+ 上退化成远古安卓 2.3 那套观感。
+     */
+    private void jsDialog(String message, final JsResult result, final Object[] prompt) {
+        final JsPromptResult pr = prompt != null ? (JsPromptResult) prompt[0] : null;
+        EditText input = null;
+        if (pr != null) {
+            input = new EditText(this);
+            input.setText((String) prompt[1]);
+            input.setSingleLine(true);
+            input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        }
+        android.app.AlertDialog.Builder b =
+                new android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        if (message != null && message.length() > 0) b.setMessage(message);
+        if (input != null) b.setView(input);
+        b.setCancelable(false);
+        if (pr != null) {
+            final EditText box = input;
+            b.setPositiveButton("确定", (d, w) -> pr.confirm(box.getText().toString()));
+            b.setNegativeButton("取消", (d, w) -> pr.cancel());
+        } else if (result != null) {
+            b.setPositiveButton("确定", (d, w) -> result.confirm());
+            b.setNegativeButton("取消", (d, w) -> result.cancel());
+        } else {
+            b.setPositiveButton("好", null);
+        }
+        b.show();
     }
 
     private void bootstrap() {
-        // web 资源必须放在「应用专属外部目录」，不能用 getFilesDir()：
-        // 提取是 Shizuku 的 shell 身份（uid 2000）跑的，它写不进 /data/user/0/<pkg>（父目录 0700），
-        // 而 /storage/emulated/0/Android/data/<pkg>/files 有 ext_data_rw，shell 能写。
-        // 之前放私有目录 —— 提取「成功」但产物一个都没落盘，所以游戏里的图全加载不出来。
-        final File base = extBase();
+        // web 资源与提取产物全部放 **App 私有内部目录**（getFilesDir）。
+        //
+        // 曾经放在「应用专属外部目录」/storage/emulated/0/Android/data/<pkg>/files，
+        // 因为提取是 Shizuku 的 shell 身份跑的、它写不进私有目录。但那样做的后果是
+        // 解出来的干员头像立绘会被相册 / 文件管理器 / 媒体选择器扫成"照片"，
+        // 用户手机里凭空多出上千张图 —— 这不能接受。
+        //
+        // 现在改成：python 只写 /data/local/tmp 暂存（shell 区，不进媒体库），
+        // 解完由本进程用 tar 流式搬进这里。见 Extractor 的类注释。
+        final File base = getFilesDir();
         new Thread(() -> {
             String failure = null;
             try {
                 step("正在准备网页资源（首次启动较慢）…");
+                // 先清掉 0.1.x 留在外部存储里的那堆干员立绘（相册能扫到的），
+                // 再把网页资源解到私有目录。
+                WebInstaller.purgeLegacyExternal(this, msg -> step(msg));
                 webDir = WebInstaller.ensure(this, base, this::step);
 
                 step("正在启动本地服务…");
@@ -378,6 +447,19 @@ public class MainActivity extends Activity {
             return new Extractor(runtimeDir(), webDir).hasOutput();
         }
 
+        /**
+         * 提取产物落地位置摘要：让用户在设置页能确认「图存在 App 私有目录里，
+         * 手机相册 / 文件管理器看不到」。返回人类可读的一行。
+         */
+        @JavascriptInterface
+        public String storageInfo() {
+            File web = webDir == null ? getFilesDir() : webDir;
+            long local = dirSize(new File(web, "public/assets/local"));
+            long art = dirSize(new File(web, "public/assets/char"));
+            return "{\"root\":\"app-private\",\"path\":" + quote(web.getAbsolutePath())
+                    + ",\"localBytes\":" + local + ",\"charBytes\":" + art + "}";
+        }
+
         /** 资源在不在本机：方舟资源目录能不能读到（需要 Shizuku）。 */
         @JavascriptInterface
         public boolean arkAssetsPresent() {
@@ -407,8 +489,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String extractStatus() {
             ExtractTask t = ExtractTask.get();
-            File outDir = new File(webDir, "public/assets/local");
-            long bytes = outDir.isDirectory() ? dirSize(outDir) : 0;
+            long bytes = assetsBytes();
             StringBuilder sb = new StringBuilder();
             sb.append("{\"phase\":\"").append(t.phase().name()).append("\",")
               .append("\"running\":").append(t.running()).append(',')
@@ -426,8 +507,10 @@ public class MainActivity extends Activity {
         /** 提取产物的体积（网页上显示「已提取 xx MB」）。 */
         @JavascriptInterface
         public long assetsBytes() {
-            File outDir = new File(webDir, "public/assets/local");
-            return outDir.isDirectory() ? dirSize(outDir) : 0;
+            File root = new File(webDir, "public/assets");
+            long n = dirSize(new File(root, "local"));
+            n += dirSize(new File(root, "char"));
+            return n;
         }
 
         /**
@@ -479,12 +562,13 @@ public class MainActivity extends Activity {
         return total;
     }
 
-    /** 应用专属外部目录（可能为 null，退回私有目录）。 */
-    private File extBase() {
-        File ext = getExternalFilesDir(null);
-        return ext != null ? ext : getFilesDir();
-    }
-
+    /**
+     * python 运行时放哪。
+     *
+     * 依旧放**外部**专属目录：里面的 python3.14 与 .so 只是运行时，不是图片，
+     * 媒体库不会把它们当照片；而且 shell 身份能直接读（私有目录它读不到），
+     * Extractor.prepare() 要 cp 到 /data/local/tmp 才跑得起来。
+     */
     private File runtimeDir() {
         File base = getExternalFilesDir(null);
         return new File(base == null ? getFilesDir() : base, "rt");

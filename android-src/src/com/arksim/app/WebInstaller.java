@@ -14,13 +14,23 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * 首次启动把 APK 里的 web.zip 解到私有目录，之后每次启动只校验一个版本戳。
+ * 首次启动把 APK 里的 web.zip 解到 App 私有内部目录，之后每次启动只校验一个版本戳。
  *
- * 放私有目录的原因：FUSE 共享存储（/sdcard）不可执行也不稳定，服务端要在这里跑。
+ * 为什么是私有内部目录（/data/user/0/<pkg>/files），而不是外部专属目录
+ * （/storage/emulated/0/Android/data/<pkg>/files）：后者虽然也是"应用专属"，但
+ * 媒体扫描器、文件管理器、系统相册的「其他文件」分类都能看到里面，
+ * 提取出来的上千张干员立绘会以照片的形式出现在用户手机里。私有目录则只有
+ * 本 App 自己与 root 能读，卸载即清除。
  */
 public final class WebInstaller {
 
-    private static final String VERSION = "web-2";
+    /**
+     * 网页资源版本戳。改动 public/ 下的东西就要 +1，否则老用户不会重新解包。
+     *
+     * web-3：网页资源与提取产物从「应用专属外部目录」搬到「App 私有内部目录」，
+     * 因为放在外部目录时解出来的干员立绘会被相册 / 媒体选择器扫成照片。
+     */
+    private static final String VERSION = "web-3";
     private static final String PREFS = "arksim";
     private static final String KEY = "webVersion";
 
@@ -69,6 +79,53 @@ public final class WebInstaller {
         prefs.edit().putString(KEY, VERSION).apply();
         step.on("网页资源就绪（" + count + " 个文件）");
         return dir;
+    }
+
+    /**
+     * 清掉历史版本留在「应用专属外部目录」里的网页资源与提取产物。
+     *
+     * 0.1.x 曾经把 web 根放在 getExternalFilesDir(null)，于是
+     * /storage/emulated/0/Android/data/com.arksim.app/files/web/public/assets/char/
+     * 下堆了上千张干员立绘 —— 相册、文件管理器、媒体选择器都能看到。
+     * 升级到私有目录版本后必须主动删掉，否则用户手机里那些图会一直留着。
+     *
+     * 只删我们自己建的 web/ 与 rt/ 两个子目录（rt 里是 python 运行时，也要重建到新位置），
+     * 不碰别的任何东西。
+     */
+    static void purgeLegacyExternal(Context ctx, Progress step) {
+        File ext = ctx.getExternalFilesDir(null);
+        if (ext == null) return;
+        File legacyWeb = new File(ext, "web");
+        if (!legacyWeb.isDirectory()) return;
+
+        step.on("正在清理旧版本留在外部存储里的图片…");
+
+        // 先把路径收集起来：删完之后 MediaStore 里那些行还在，
+        // 相册仍会显示成"空白/裂图"的占位。删完补一次扫描，让媒体库把这些条目丢掉。
+        java.util.List<String> paths = new java.util.ArrayList<>();
+        collectFiles(legacyWeb, paths);
+
+        deleteTree(legacyWeb);
+
+        if (!paths.isEmpty()) {
+            try {
+                android.media.MediaScannerConnection.scanFile(
+                        ctx, paths.toArray(new String[0]), null, null);
+            } catch (Throwable ignored) {
+                // 尽力而为：扫描失败也不影响文件已被删除这件事。
+            }
+        }
+        step.on("已清理 " + paths.size() + " 个旧文件");
+    }
+
+    /** 递归收集目录下的文件绝对路径（只用来通知媒体库刷新）。 */
+    private static void collectFiles(File f, java.util.List<String> out) {
+        File[] kids = f.listFiles();
+        if (kids == null) return;
+        for (File k : kids) {
+            if (k.isDirectory()) collectFiles(k, out);
+            else out.add(k.getAbsolutePath());
+        }
     }
 
     /** 只在版本变化时用得到：清掉旧的一份，避免残留文件混进去。 */
