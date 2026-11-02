@@ -203,7 +203,7 @@ function onPieceClick(hit) {
   // 流形正在等复制目标时（技能已开、copyTarget 指向它），直接提示玩家怎么复制，
   // 不再让他自己猜「拖到哪里」
   const copyTarget = session.handCopyTarget?.();
-  if (copyTarget && copyTarget.uid === u.uid) {
+  if (copyTarget && selectionId(copyTarget) === selectionId(u)) {
     // 流形开了复制技能：直接弹「选一个干员让它复制」的面板，不用玩家自己摸索拖拽
     openCopyPicker(copyTarget);
   } else {
@@ -223,8 +223,6 @@ function onPieceClick(hit) {
  */
 function openCopyPicker(copyTarget) {
   if (levelRun || !copyTarget) return;
-  const targetId = copyTarget.defId;
-  const owner = copyTarget.ownerUnit;
   // 复制目标来自「手牌」：把当前手牌列出来让玩家挑
   const squad = state.document.squad.filter((id) => isAvailable(id));
   if (!squad.length) return warn('手牌里没有可复制的干员，先加入一张', true);
@@ -247,7 +245,7 @@ function openCopyPicker(copyTarget) {
       + '<span class="pk__multicount">选好后会自动进入朝向选择</span>';
   }
   // 记录：这一步选出来的干员，落地时要落到流形所在格
-  state.ui.copyFor = copyTarget.uid;
+  state.ui.copyFor = selectionId(copyTarget);   // 用统一 id：引擎单位不一定有 uid
   warn('选一个手牌干员，让它替流形「变身」；接着选朝向，落地即完成复制');
 }
 
@@ -471,6 +469,8 @@ function clearEnemySelection() {
 function selectUnit(u) {
   if (!u || !u.alive || !u.deployed) return clearSelection();
   state.ui.active = null;
+  // 选干员就把敌人的选中清掉：两者互斥，否则面板会一直停在敌人那（enemyVM 优先级更高）
+  state.ui.selectedEnemyId = null;
   state.ui.selectedUid = selectionId(u);
   state.ui.popOpen = false;
   applyTileOnly();
@@ -884,6 +884,10 @@ const actions = {
     saveLocal();
     warn('伤害计分板已清零');
   },
+  // 右侧伤害计分板在手机上占半屏，要能收起来（状态记在 localStorage，下次进来还是收着的）
+  onScoreFold() {
+    scoreboard?.toggleFold();
+  },
   onReset() {
     if (!window.confirm(levelRun ? '重新开始这次作战？当前进度会清空，阵容不变。' : '重置当前演练？地图和当前在场单位保留，时间、血量、技力和费用会重新初始化。')) return;
     closeWheel();
@@ -952,10 +956,16 @@ const actions = {
     state.ui.popOpen = true;
     // 场上正选着一个干员、且它还没开技能 → 直接换掉它带的技能（用户要求「局内也可以改」）
     const live = selectedUnit();
-    if (live && live.skill && !live.skill.active) {
-      const want = Math.max(0, i);
-      const ok = switchDeployedSkill(live, want);
-      if (ok) { saveLocal(); renderHand(); syncHud(true); return; }
+    if (live) {
+      if (live.skill && !live.skill.active) {
+        const ok = switchDeployedSkill(live, Math.max(0, i));
+        if (ok) { saveLocal(); renderHand(); syncHud(true); return; }
+      } else if (live.skill?.active) {
+        // 技能开着的时候换不了：直接说清楚，不要落到下面那条「手牌」路径上（那里 active 是 null，
+        // 什么都不会发生，玩家会以为点了没反应）
+        warn('技能正在运行，等它结束或手动停止后才能换', true);
+        return;
+      }
     }
     const maxSkill = Math.max(0, (units()[state.ui.active]?.skills?.length || 1) - 1);
     state.ui.skillIndex = Math.max(0, Math.min(i, maxSkill));
@@ -989,6 +999,7 @@ const actions = {
   onPickerOpen() {
     if (levelRun) return;
     state.ui.copyFor = null;       // 正常打开 = 不是流形复制
+    resetMultiPick();              // 每次都从「非多选、无勾选」开始
     hud.setPicker(refs, true);
     const head = refs.picker.querySelector('.pk__head h2');
     if (head) head.textContent = '加入手牌';
@@ -998,8 +1009,11 @@ const actions = {
   },
   onPickerClose() {
     hud.setPicker(refs, false);
-    // 关掉选择器就把「正在给流形挑复制目标」这个临时状态清掉，免得下次点手牌还走错分支
+    // 关掉选择器就把临时状态全部清掉：
+    //   · copyFor —— 正在给流形挑复制目标
+    //   · 多选模式与已勾选 —— 否则下次打开还留着上次勾的人，容易误加
     if (state.ui.copyFor != null) { state.ui.copyFor = null; warn('已取消复制'); }
+    resetMultiPick();
   },
   /** 切换「多选」模式。 */
   onPickerMulti() {
@@ -1042,7 +1056,7 @@ const actions = {
     if (!isAvailable(id)) return warn('该干员未加入沙盒牌库', true);
     // 这一击是在给流形挑复制目标：选完收起面板，直接进入朝向选择
     if (state.ui.copyFor != null) {
-      const target = session.allies().find((x) => x.uid === state.ui.copyFor);
+      const target = session.allies().find((x) => selectionId(x) === state.ui.copyFor);
       if (!target || !target.alive || !target.skill?.active) {
         state.ui.copyFor = null;
         hud.setPicker(refs, false);

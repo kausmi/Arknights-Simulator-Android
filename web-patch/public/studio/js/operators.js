@@ -593,7 +593,10 @@ function updateNow(cell, input, origin, v) {
   const pot = potEl ? Math.max(0, Math.min(6, Number(potEl.value) || 0)) : 0;
 
   if (key === 'potRank') {
-    nowEl.textContent = `当前 ${v} 潜`;
+    // 官方潜能是 0~6（0 = 无潜，6 = 满潜）。超出范围要明说，别静默按 6 算。
+    const clamped = Math.max(0, Math.min(6, v));
+    const warnTxt = (v < 0 || v > 6) ? `（超出 0~6，折算按 ${clamped} 潜）` : '';
+    nowEl.textContent = `当前 ${clamped} 潜${warnTxt}`;
     // 潜能一变，所有基础数值的折算提示都要重算
     refreshAllNow();
     return;

@@ -167,6 +167,7 @@ export function mount(root, act) {
       case 'frame': act.onFrame?.(); break;
       case 'reset': act.onReset?.(); break;
       case 'score-clear': act.onScoreClear?.(); break;
+      case 'score-fold': e.stopPropagation(); act.onScoreFold?.(); break;
       case 'board': act.onBoard?.(); break;
       case 'pay': act.onPay?.(); break;
       case 'card': act.onCard?.(btn.dataset.id); break;

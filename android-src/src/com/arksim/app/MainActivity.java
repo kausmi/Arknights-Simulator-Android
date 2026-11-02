@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ShizukuBridge.setAppContext(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         edgeToEdge();
         applyOrientation(readOrientation());
@@ -227,7 +228,11 @@ public class MainActivity extends Activity {
     }
 
     private void bootstrap() {
-        final File base = getFilesDir();
+        // web 资源必须放在「应用专属外部目录」，不能用 getFilesDir()：
+        // 提取是 Shizuku 的 shell 身份（uid 2000）跑的，它写不进 /data/user/0/<pkg>（父目录 0700），
+        // 而 /storage/emulated/0/Android/data/<pkg>/files 有 ext_data_rw，shell 能写。
+        // 之前放私有目录 —— 提取「成功」但产物一个都没落盘，所以游戏里的图全加载不出来。
+        final File base = extBase();
         new Thread(() -> {
             String failure = null;
             try {
@@ -341,7 +346,6 @@ public class MainActivity extends Activity {
         public String extractAssets() {
             ShizukuBridge.Flavor f = ShizukuBridge.currentFlavor();
             if (!f.usable) return f.label + " 暂时还用不了（目录结构还没适配），请切到简中官服或 B 服";
-            if (!ShizukuBridge.flavorInstalled(f)) return "没检测到" + f.label + "（" + f.pkg + "），请先安装并下载完资源";
             if (!ShizukuBridge.alive()) return "Shizuku 没有在运行，请先启动 Shizuku";
             if (!ShizukuBridge.granted()) {
                 ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
@@ -350,10 +354,16 @@ public class MainActivity extends Activity {
                 }));
                 return "已弹出 Shizuku 授权框，请选「允许」，然后回来点「开始提取」";
             }
-            // 授权了但目录还是读不到：多半是资源没下完，或者选错了服
-            if (!ShizukuBridge.arkDirReadable()) {
+            // 先实测目录能不能读（force：用户主动点的，绕过缓存重新探）。
+            // 这一步比查 PackageManager 靠谱得多 —— Android 11+ 的包可见性会让
+            // getPackageInfo() 对没在 <queries> 里声明的包直接抛异常，
+            // 而 shell 身份 ls 一下目录是骗不了人的。
+            if (!ShizukuBridge.arkDirReadable(true)) {
                 String probe = ShizukuBridge.arkDirProbe();
                 if (probe.contains("目录不存在") || probe.contains("没下载完")) {
+                    if (!ShizukuBridge.flavorInstalled(f)) {
+                        return "没检测到" + f.label + "（" + f.pkg + "），请先安装并下载完资源";
+                    }
                     return "读不到 " + f.label + " 的资源目录：确认游戏内已下载完「完整资源包」，或换到正确的客户端";
                 }
                 return "读不到 " + f.label + " 的资源目录";
@@ -467,6 +477,12 @@ public class MainActivity extends Activity {
             else total += f.length();
         }
         return total;
+    }
+
+    /** 应用专属外部目录（可能为 null，退回私有目录）。 */
+    private File extBase() {
+        File ext = getExternalFilesDir(null);
+        return ext != null ? ext : getFilesDir();
     }
 
     private File runtimeDir() {

@@ -24,7 +24,7 @@ import java.io.OutputStream;
 public final class PythonInstaller {
 
     /** 改动 assets/py 的内容时递增，触发重新释放。 */
-    private static final String VERSION = "py-1";
+    private static final String VERSION = "py-2";
     private static final String PREFS = "arksim";
     private static final String KEY = "pyVersion";
 

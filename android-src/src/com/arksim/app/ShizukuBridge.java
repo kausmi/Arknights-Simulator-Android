@@ -96,6 +96,7 @@ public final class ShizukuBridge {
             if (ctx == null) return;
             if (findFlavor(id) == null) return;
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_FLAVOR, id).apply();
+            dirCheckedAt = 0;      // 换包体了：路径变了，缓存作废
         } catch (Throwable ignored) {
         }
     }
@@ -254,12 +255,37 @@ public final class ShizukuBridge {
      *
      * 正确做法：让 shell 身份（uid 2000）自己去试一次。真能读到才算数。
      */
+    /** 目录可读性的缓存：起一次 shell 进程不便宜，设置页每秒轮询不能每次都起。 */
+    private static volatile long dirCheckedAt = 0;
+    private static volatile boolean dirCached = false;
+    private static volatile String dirCachePath = "";
+    private static final long DIR_CACHE_MS = 8000;   // 8 秒内复用同一次探测结果
+
     public static boolean arkDirReadable() {
+        return arkDirReadable(false);
+    }
+
+    /**
+     * @param force true = 忽略缓存重新探测（用户点「开始提取」时才需要）
+     */
+    public static boolean arkDirReadable(boolean force) {
         if (!alive() || !granted()) return false;
+        String path = arkBundles();
+        long now = System.currentTimeMillis();
+        if (!force && dirCachePath.equals(path) && (now - dirCheckedAt) < DIR_CACHE_MS) return dirCached;
+        boolean ok = probeDir(path);
+        dirCached = ok;
+        dirCachePath = path;
+        dirCheckedAt = now;
+        return ok;
+    }
+
+    /** 真正起一个 shell 去试读（结果由 arkDirReadable 缓存）。 */
+    private static boolean probeDir(String path) {
         try {
             // test -r 只检查可读，不列目录、不读内容，开销可以忽略
             Process p = process(
-                    new String[]{"sh", "-c", "test -r '" + arkBundles() + "' && echo OK"},
+                    new String[]{"sh", "-c", "test -r '" + path + "' && echo OK"},
                     new String[]{"PATH=/system/bin:/system/xbin"},
                     "/data/local/tmp");
             java.io.InputStream in = p.getInputStream();
@@ -323,7 +349,7 @@ public final class ShizukuBridge {
           .append(",\"granted\":").append(granted)
           .append(",\"uid\":").append(uid)
           .append(",\"version\":").append(ver)
-          .append(",\"arkReadable\":").append(arkDirReadable())
+          .append(",\"arkReadable\":").append(arkDirReadable(false))
           .append(",\"flavor\":\"").append(f.id).append('"')
           .append(",\"flavorLabel\":\"").append(f.label).append('"')
           .append(",\"flavorInstalled\":").append(flavorInstalled(f))
@@ -333,11 +359,24 @@ public final class ShizukuBridge {
         return sb.toString();
     }
 
+    private static volatile Context appCtx;
+
+    /** Activity 起来时把 Application 存进来，别每次都靠反射去捞。 */
+    public static void setAppContext(Context ctx) {
+        if (ctx != null) appCtx = ctx.getApplicationContext();
+    }
+
     private static Context appContext() {
+        Context cached = appCtx;
+        if (cached != null) return cached;
         try {
             Class<?> atClass = Class.forName("android.app.ActivityThread");
             Object app = atClass.getMethod("currentApplication").invoke(null);
-            return app instanceof Context ? (Context) app : null;
+            if (app instanceof Context) {
+                appCtx = (Context) app;
+                return appCtx;
+            }
+            return null;
         } catch (Throwable t) {
             return null;
         }

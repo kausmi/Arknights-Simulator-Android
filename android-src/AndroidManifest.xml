@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.arksim.app"
-    android:versionCode="1"
-    android:versionName="0.1">
+    android:versionCode="2"
+    android:versionName="0.1.1">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -12,6 +12,24 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- Shizuku：借 shell 身份直读《明日方舟》的资源目录 -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+    <!--
+        Android 11（API 30）起的「包可见性」：targetSdk >= 30 时，getPackageInfo()
+        查不到没在这里声明过的包，会直接抛 NameNotFoundException。
+        不写这一段，方舟明明装在本机也会被判成「没检测到 · 请先安装」——
+        这正是 0.1 里「已经授权了却还是扫不出资源」的根因之一。
+    -->
+    <queries>
+        <package android:name="com.hypergryph.arknights" />
+        <package android:name="com.hypergryph.arknights.bilibili" />
+        <package android:name="com.YoStarEN.Arknights" />
+        <package android:name="com.YoStarJP.Arknights" />
+        <package android:name="com.YoStarKR.Arknights" />
+        <package android:name="tw.com.hypergryph.arknights" />
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="moe.shizuku.sui" />
+    </queries>
+
 
     <application
         android:label="@string/app_name"

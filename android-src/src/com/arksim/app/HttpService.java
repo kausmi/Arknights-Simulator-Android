@@ -924,6 +924,10 @@ public final class HttpService {
                           OutputStream out) throws IOException {
         long total = file.length();
         String mime = mimeOf(file.getName());
+        // 本地提取出来的干员图为了不改 data/assets.json 的登记路径，文件名一律是 .png，
+        // 但内容存的是 WebP（同样的画质体积只有一半）。这里按文件头校正 Content-Type，
+        // 否则浏览器拿 image/png 去解 WebP 会直接显示裂图。
+        if (mime.startsWith("image/")) mime = sniffImageMime(file, mime);
         boolean head = method.equals("HEAD");
 
         String rangeHeader = headers.get("range");
@@ -990,6 +994,28 @@ public final class HttpService {
                 left -= read;
             }
         }
+    }
+
+    /**
+     * 按文件头认图片格式。本地提取的干员图沿用了 .png 的登记路径，内容却是 WebP。
+     * 只读头 16 字节，代价可以忽略；认不出就沿用扩展名推出来的那个。
+     */
+    private static String sniffImageMime(File file, String fallback) {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] h = new byte[16];
+            int n = fis.read(h);
+            if (n >= 12) {
+                // RIFF....WEBP
+                if (h[0] == 'R' && h[1] == 'I' && h[2] == 'F' && h[3] == 'F'
+                        && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P') return "image/webp";
+                // AVIF / HEIF: ....ftyp
+                if (h[4] == 'f' && h[5] == 't' && h[6] == 'y' && h[7] == 'p') return "image/avif";
+            }
+            if (n >= 3 && (h[0] & 0xFF) == 0xFF && (h[1] & 0xFF) == 0xD8 && (h[2] & 0xFF) == 0xFF) return "image/jpeg";
+        } catch (IOException ignored) {
+            // 读不到头就按扩展名走
+        }
+        return fallback;
     }
 
     private static File join(File base, List<String> parts) {

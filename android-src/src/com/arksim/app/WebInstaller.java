@@ -20,7 +20,7 @@ import java.util.zip.ZipInputStream;
  */
 public final class WebInstaller {
 
-    private static final String VERSION = "web-1";
+    private static final String VERSION = "web-2";
     private static final String PREFS = "arksim";
     private static final String KEY = "webVersion";
 

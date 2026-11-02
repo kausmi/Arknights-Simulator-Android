@@ -8,6 +8,19 @@ const LABEL = { phys: '物理', arts: '法术', elemental: '元素', true: '真�
 const MAX_ROWS = 13;
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
 
+// 收起状态记在 localStorage：手机横屏时这块表能吃掉小半屏，玩家收起一次就该一直收着，
+// 不要每局重新摊开、也不要一回主菜单就忘。
+const FOLD_KEY = 'arksim-score-folded-v1';
+
+export function readScoreFolded() {
+  try { return localStorage.getItem(FOLD_KEY) === '1'; } catch { return false; }
+}
+
+export function writeScoreFolded(v) {
+  try { localStorage.setItem(FOLD_KEY, v ? '1' : '0'); } catch { /* 无痕模式忽略 */ }
+}
+
+
 /** 大数字压成 万 / 亿，一列里塞得下；小于一万照常显示。 */
 const compact = (value) => {
   const v = Number.isFinite(value) ? value : 0;
@@ -23,8 +36,14 @@ const rate = (value) => {
 };
 
 export function scoreboardMarkup() {
-  return `<aside class="hud__score score" id="damage-score" aria-label="伤害计分板" aria-live="off">
-    <header class="score__head"><span><i aria-hidden="true">◆</i> 谁尽力，谁又在犯罪</span><button type="button" data-act="score-clear" title="只清零伤害统计，不改变战场">清零</button></header>
+  const folded = readScoreFolded();
+  return `<aside class="hud__score score${folded ? ' is-folded' : ''}" id="damage-score" aria-label="伤害计分板" aria-live="off">
+    <header class="score__head">
+      <span><i aria-hidden="true">◆</i> 谁尽力，谁又在犯罪</span>
+      <button type="button" class="score__clear" data-act="score-clear" title="只清零伤害统计，不改变战场">清零</button>
+      <button type="button" class="score__fold" data-act="score-fold" title="${folded ? '展开伤害计分板' : '收起伤害计分板'}"
+              aria-expanded="${folded ? 'false' : 'true'}">${folded ? '‹' : '›'}</button>
+    </header>
     ${scoreTableMarkup()}
   </aside>`;
 }
@@ -50,9 +69,24 @@ function scoreRowsMarkup(rows) {
 
 export function createScoreboard(root) {
   const body = root.querySelector('[data-score-body]');
+  const foldBtn = root.querySelector('[data-act="score-fold"]');
   let lastDraw = -Infinity, signature = '';
 
+  // 状态以 DOM 上的类为准，展开/收起只切一个类 + 记盘，不重建表格
+  function applyFold(folded) {
+    root.classList.toggle('is-folded', folded);
+    if (foldBtn) {
+      foldBtn.textContent = folded ? '‹' : '›';
+      foldBtn.title = folded ? '展开伤害计分板' : '收起伤害计分板';
+      foldBtn.setAttribute('aria-expanded', folded ? 'false' : 'true');
+    }
+    writeScoreFolded(folded);
+  }
+
   return {
+    toggleFold() {
+      applyFold(!root.classList.contains('is-folded'));
+    },
     render(score, force = false) {
       if (!score || !body) return;
       const now = performance.now();

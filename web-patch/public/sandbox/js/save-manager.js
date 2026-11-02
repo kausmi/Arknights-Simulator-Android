@@ -91,6 +91,7 @@ export function openSaveManager({ current, onLoad, onClose, onSaved, onNew, host
         selected = 0;
         message = '已清空全部存档数据';
         bad = false;
+        onSaved?.(0);          // 让宿主（沙盒入口页）也刷新一次预览
         render();
         return;
       }

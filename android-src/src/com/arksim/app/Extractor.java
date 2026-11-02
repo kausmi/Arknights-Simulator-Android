@@ -22,15 +22,27 @@ public final class Extractor {
     }
 
     private final File runtime;   // <externalFiles>/rt  （含 py/ 与 extract/）
+    private final File webDir;    // web 根（里面有 public/ 与 data/）
     private final File outDir;    // web/public/assets/local
     private final File manifest;  // web/data/local-assets.json
 
     /** shell 身份可执行的位置：/sdcard 是 FUSE noexec，只有这里能跑 ELF。 */
     private static final File STAGE = new File("/data/local/tmp/arksim-rt");
-    private static final File STAMP = new File(STAGE, ".stamp");
+
+    /**
+     * 版本戳文件名。
+     *
+     * ⚠️ 戳**不能**放在 STAGE 里面。STAGE 是 shell 身份建的（shell:shell 0755），
+     * 应用身份连写一个字节都不行 —— 之前把戳写成 /data/local/tmp/arksim-rt/.stamp，
+     * 结果 prepare() 拷完运行时就抛 EACCES，整个流程停在这一步，
+     * 界面上看着就是「点了重新提取，转两下没动静」。放到我们自己的 runtime 目录
+     * （应用身份可写、shell 也能读）就没这个问题。
+     */
+    private static final String STAMP_NAME = ".stamp";
 
     public Extractor(File runtime, File webDir) {
         this.runtime = runtime;
+        this.webDir = webDir;
         this.outDir = new File(webDir, "public/assets/local");
         this.manifest = new File(webDir, "data/local-assets.json");
     }
@@ -41,8 +53,12 @@ public final class Extractor {
      */
     public File prepare(Progress cb) throws Exception {
         File src = runtime;
+        File stampFile = new File(src, STAMP_NAME);
         String stamp = Long.toString(src.lastModified()) + ":" + new File(src, "py/python3.14").length();
-        if (STAMP.isFile() && stamp.equals(readText(STAMP).trim())) return STAGE;
+        if (stampFile.isFile() && stamp.equals(readText(stampFile).trim())
+                && new File(STAGE, "py/python3.14").isFile()) {
+            return STAGE;
+        }
         cb.onLine("正在准备可执行的 python 环境（首次较慢）…");
         // 先删干净再拷，避免新旧混在一起。
         runShell(new String[]{"sh", "-c", "rm -rf '" + STAGE.getAbsolutePath() + "'"}, cb);
@@ -50,7 +66,7 @@ public final class Extractor {
                 "mkdir -p '" + STAGE.getAbsolutePath() + "' && "
                         + "cp -r '" + src.getAbsolutePath() + "/.' '" + STAGE.getAbsolutePath() + "/' && "
                         + "chmod -R 755 '" + STAGE.getAbsolutePath() + "'"}, cb);
-        writeText(STAMP, stamp);
+        writeText(stampFile, stamp);
         return STAGE;
     }
 
@@ -146,7 +162,33 @@ public final class Extractor {
         // 第二步：读「本机当前版本有哪些干员」，并把 2D 小人索引出来。
         // 这一步让干员列表跟着游戏更新走 —— 源是 skinpack/（文件名就是 charId），
         // 不依赖解析数据表，游戏一出新干员就自动出现在列表里。
-        return readRoster(py, ex, env, cb);
+        int roster = readRoster(py, ex, env, cb);
+
+        // 第三步：干员头像 / 立绘。网页的 data/assets.json 给每个干员登记了
+        // /assets/char/{avatar,portrait,illust}/<id>[_1|_2].png，但这些目录原先根本不存在，
+        // 于是所有人都是灰剪影。这里从 chararts/<charId>.ab 把 Texture2D 解出来直接按登记路径写。
+        // 放最后是因为它最慢（467 个 bundle，十几个 G 的贴图逐个解），但漏了它整个界面就是没图的。
+        int art = extractOperatorArt(py, ex, env, cb);
+        return (roster != 0) ? roster : art;
+    }
+
+    /** 调 extract_operator_art.py：把干员头像/立绘解到 web/public/assets/char/。 */
+    private int extractOperatorArt(File py, File ex, String[] env, Progress cb) throws Exception {
+        File script = new File(ex, "extract_operator_art.py");
+        if (!script.isFile()) {
+            cb.onLine("skip: extract_operator_art.py 不在提取器目录里");
+            return 0;
+        }
+        String[] cmd = {
+                new File(py, "python3.14").getAbsolutePath(),
+                script.getAbsolutePath(),
+                "--game", ShizukuBridge.arkBundles(),
+                "--web", webDir.getAbsolutePath(),
+        };
+        Process p = ShizukuBridge.process(cmd, env, py.getAbsolutePath());
+        pump(p.getInputStream(), cb);
+        pump(p.getErrorStream(), cb);
+        return p.waitFor();
     }
 
     /** 调 read_roster.py：扫 skinpack 得到干员列表 + 小人索引。 */

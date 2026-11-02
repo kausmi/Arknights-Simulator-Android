@@ -163,81 +163,101 @@ function escapeHtml(s) {
  * @param {HTMLDialogElement} dialog
  */
 export function wireAssetSection(dialog) {
-  const box = dialog.querySelector('.settings__assets');
-  if (!box) return () => {};
+  let timer = 0;
 
-  const stateEl = box.querySelector('[data-asset-state]');
-  const sizeEl = box.querySelector('[data-asset-size]');
-  const badgeEl = box.querySelector('.settings__badge');
-  const btn = box.querySelector('[data-asset-extract]');
-  const status = dialog.querySelector('[role="status"]');
+  /** 把当前这块（可能是刚重画出来的新节点）接上线。 */
+  function wire() {
+    const box = dialog.querySelector('.settings__assets');
+    if (!box) return;
 
-  const refresh = () => {
-    const st = readAssetState();
-    if (stateEl) stateEl.textContent = statusLine(st);
-    if (sizeEl) sizeEl.textContent = fmtBytes(st.bytes);
-    if (badgeEl) {
-      const tone = toneOf(st);
-      badgeEl.className = `settings__badge is-${tone}`;
-      badgeEl.textContent = { ok: '已就绪', warn: '需要授权', bad: '上次失败', busy: '提取中', off: '不可用' }[tone] || '';
-    }
-    if (btn) {
-      btn.disabled = st.running;
-      btn.textContent = st.running ? '正在提取…' : (st.ready ? '重新提取' : '开始提取');
-    }
-  };
+    const stateEl = box.querySelector('[data-asset-state]');
+    const sizeEl = box.querySelector('[data-asset-size]');
+    const badgeEl = box.querySelector('.settings__badge');
+    const btn = box.querySelector('[data-asset-extract]');
+    const status = dialog.querySelector('[role="status"]');
 
-  btn?.addEventListener('click', () => {
-    const s = shell();
-    let reply;
-    try {
-      reply = s.extractAssets();
-    } catch (error) {
-      reply = `调用失败：${error.message}`;
-    }
-    if (status) status.textContent = reply || '已开始提取';
+    const refresh = () => {
+      const st = readAssetState();
+      if (stateEl) stateEl.textContent = statusLine(st);
+      if (sizeEl) sizeEl.textContent = fmtBytes(st.bytes);
+      if (badgeEl) {
+        const tone = toneOf(st);
+        badgeEl.className = `settings__badge is-${tone}`;
+        badgeEl.textContent = { ok: '已就绪', warn: '需要授权', bad: '上次失败', busy: '提取中', off: '不可用' }[tone] || '';
+      }
+      if (btn) {
+        btn.disabled = st.running;
+        btn.textContent = st.running ? '正在提取…' : (st.ready ? '重新提取' : '开始提取');
+      }
+    };
+
+    // 每次重画都会得到新节点，监听器要重新挂 —— 所以这里用一次性绑定 + 递归重接线
+    btn?.addEventListener('click', () => {
+      let reply;
+      try {
+        reply = shell().extractAssets();
+      } catch (error) {
+        reply = `调用失败：${error.message}`;
+      }
+      if (status) status.textContent = reply || '已开始提取';
+      refresh();
+    });
+
+    box.querySelector('[data-asset-help]')?.addEventListener('click', () => {
+      try {
+        shell().showShizukuHelp();
+      } catch { /* 没有壳就什么都不做 */ }
+    });
+
+    // 包体切换：写进壳 → 重画整块 → 重新接线（否则第二次点就没反应）
+    box.addEventListener('click', (e) => {
+      const f = e.target.closest('[data-flavor]');
+      if (!f || f.disabled) return;
+      try {
+        shell().selectArkFlavor(f.dataset.flavor);
+      } catch (error) {
+        if (status) status.textContent = `切换失败：${error.message}`;
+        return;
+      }
+      const host = box.parentElement;
+      if (host) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = assetSectionHtml(readAssetState());
+        const fresh = tmp.querySelector('.settings__assets');
+        if (fresh) box.replaceWith(fresh);
+      }
+      if (ctlAgain()) ctlAgain().textContent = `已切换到 ${f.querySelector('b')?.textContent || f.dataset.flavor}`;
+      wire();          // 关键：新节点重新挂监听
+    });
+
     refresh();
-  });
+  }
 
-  // 包体切换：点了立刻写进壳，然后把整块重画一遍（当前项高亮与「已安装」都变了）
-  box.addEventListener('click', (e) => {
-    const f = e.target.closest('[data-flavor]');
-    if (!f || f.disabled) return;
-    try {
-      shell().selectArkFlavor(f.dataset.flavor);
-    } catch (error) {
-      if (status) status.textContent = `切换失败：${error.message}`;
-      return;
-    }
-    // 重画整个资源区块：把新的状态塞回去，按钮、徽章、路径一次全更新
-    const host = box.parentElement;
-    if (host) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = assetSectionHtml(readAssetState());
-      const fresh = tmp.querySelector('.settings__assets');
-      if (fresh) box.replaceWith(fresh);
-    }
-    const ctl = dialog.querySelector('[role="status"]');
-    if (ctl) ctl.textContent = `已切换到 ${f.querySelector('b')?.textContent || f.dataset.flavor}`;
-    refresh();
-  });
+  function ctlAgain() { return dialog.querySelector('[role="status"]'); }
 
-  box.querySelector('[data-asset-help]')?.addEventListener('click', () => {
-    try {
-      shell().showShizukuHelp();
-    } catch { /* 没有壳就什么都不做 */ }
-  });
+  wire();
 
-  // 提取是后台线程跑的，这里每秒问一次；对话框关掉就停。
-  const timer = setInterval(() => {
+  // 提取是后台线程跑的，每秒问一次；对话框关掉就停。
+  timer = setInterval(() => {
     if (!dialog.isConnected || !dialog.open) {
       clearInterval(timer);
       return;
     }
-    refresh();
+    const box = dialog.querySelector('.settings__assets');
+    if (!box) { clearInterval(timer); return; }
+    // 只刷数字，不重画（刷新走的是节点上的函数，这里直接读一次状态写进去）
+    const st = readAssetState();
+    const stateEl = box.querySelector('[data-asset-state]');
+    const sizeEl = box.querySelector('[data-asset-size]');
+    const btn = box.querySelector('[data-asset-extract]');
+    if (stateEl) stateEl.textContent = statusLine(st);
+    if (sizeEl) sizeEl.textContent = fmtBytes(st.bytes);
+    if (btn) {
+      btn.disabled = st.running;
+      btn.textContent = st.running ? '正在提取…' : (st.ready ? '重新提取' : '开始提取');
+    }
   }, 1000);
 
-  refresh();
   return () => clearInterval(timer);
 }
 
