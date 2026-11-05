@@ -239,3 +239,69 @@ pre.lv-dialog-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 .lv-dialog { overflow: hidden; }
 
 .lv-side-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ── 与自由沙盒统一：浅色扁平（覆盖上面这套深色） ───────────────── */
+body.lv {
+  --bg: #e9ebeb;
+  --fg: #22282a;
+  --lv-gap: 12px;
+  --lv-radius: 2px;
+  background: #e9ebeb !important;
+  color: #22282a !important;
+  font-size: 13px;
+}
+body.lv .lv-head {
+  height: 46px;
+  min-height: 46px;
+  padding: 0 14px;
+  background: #fff;
+  border-bottom: 1px solid #dfe4e5;
+}
+body.lv .lv-head h1 {
+  font-size: 15px !important;
+  line-height: 1.2;
+  color: #22282a;
+  letter-spacing: 0;
+}
+body.lv .lv-head .lv-sub { font-size: 11px; opacity: .6; }
+body.lv .lv-back {
+  border: 1px solid #c9d0d2;
+  border-radius: 2px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: #59636a;
+  opacity: 1;
+}
+body.lv .lv-body { padding: 12px 14px; }
+body.lv .lv-actions { gap: 8px; margin-bottom: 12px; }
+body.lv .lv-btn {
+  font-size: 12.5px !important;
+  line-height: 1.2;
+  padding: 8px 14px !important;
+  min-height: 0;
+  border-radius: 2px !important;
+  border: 1px solid #c9d0d2 !important;
+  background: #fff !important;
+  color: #22282a !important;
+}
+body.lv .lv-btn:hover { background: #f2f4f4 !important; }
+body.lv .lv-btn--pri {
+  background: #00a2c8 !important;
+  border-color: #00a2c8 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+body.lv .lv-btn--red { border-color: #e2392c !important; color: #c8302a !important; }
+body.lv .lv-list { gap: 8px; }
+body.lv .lv-card {
+  background: #fff !important;
+  border: 1px solid #dfe4e5 !important;
+  border-radius: 2px !important;
+  padding: 10px 12px !important;
+}
+body.lv .lv-card__name { color: #22282a; font-weight: 600; font-size: 13px; }
+body.lv .lv-card__meta { color: #7c878d; font-size: 11.5px; }
+body.lv .lv-empty { color: #7c878d; opacity: 1; padding: 24px 0; font-size: 12.5px; }
+body.lv .lv-err { border-color: #e2392c; background: #fdecea; color: #b3261e; border-radius: 2px; font-size: 12.5px; }
+body.lv .lv-stage { padding: 0 14px 14px; gap: 12px; }
+body.lv .lv-canvas-wrap { border: 1px solid #dfe4e5; border-radius: 2px; min-height: 0; background: #fff; }

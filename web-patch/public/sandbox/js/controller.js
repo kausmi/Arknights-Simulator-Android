@@ -95,6 +95,31 @@ let lastHud = 0, prevFrame = 0;
 
 const { units, opVM, allOps, reserveSlots, squadVMs, charIdOf, rangeGridOf } = createCatalog(data, state);
 
+/**
+ * 这张手牌要用第几个技能。
+ *
+ * 三层，缺一不可：
+ *   ① 局内换过的（`state.document.skillSelections[id]`）—— 玩家在这个存档里手动挑的，优先级最高；
+ *   ② 干员详情页配的（记录自己的 `skill.index`）—— 后端 `applySkillChoice` 把 `skills[idx]` 折成
+ *      `skill`，同时把 `index` 留在原地，所以这里读它就能跟详情页对上；
+ *   ③ 都没有才回落到 0。
+ *
+ * 以前这里一律写 `skillSelections[id] ?? 0`，第 ② 层整个丢掉了：用户在详情页换好技能，
+ * 一进沙盒还是第一个技能 —— 就是这个默认 0 顶掉的。
+ */
+function skillIndexOf(id) {
+  const picked = state.document.skillSelections[id];
+  if (Number.isInteger(picked) && picked >= 0) return picked;
+  const own = units()[id]?.skill?.index;
+  if (Number.isInteger(own) && own >= 0) return own;
+  return 0;
+}
+
+/** 同上，但顺手夹到这张牌的技能数范围内（越界会让 ui.skillIndex 指向不存在的技能）。 */
+function clampSkillIndexOf(id) {
+  return Math.min(skillIndexOf(id), Math.max(0, (units()[id]?.skills?.length || 1) - 1));
+}
+
 /* -------------------------------------------------------------------------------------------------------------- */
 /* 一场战斗                                                                                                        */
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -253,46 +278,33 @@ function openCopyPicker(copyTarget) {
 function professionCnOf(p) { return PROF_CN[p] || p || ''; }
 
 /**
- * 换掉一个**已部署**干员带的技能（用户要求「局内也可以改干员所携带的技能」）。
+ * 换掉一个干员带的技能（用户要求「局内也可以改干员所携带的技能」）。
  *
- * 引擎的技能对象是部署时按 loadout.skillIndex 装配好的，直接改 index 不会重装。
- * 所以这里用引擎暴露的「重装技能」路径：先看 unit 上有没有可用的 setSkill；
- * 没有就走「换定义 + 重置技能态」的软路径（只换 spCost/name/def，不换触发逻辑，
- * 对绝大多数数值型技能够用），仍不行就明确告诉玩家要撤退重放。
+ * ⚠️ 这里原来只改 `unit.skill.index/name/spCost`（「软换」），触发逻辑一行没动 ——
+ * 用户看到的就是「界面显示换了、打起来还是原来那个技能」。真正的换法必须重建
+ * content 里这份干员定义 + 引擎的 skill 状态，这件事在 `session.switchSkill` 里
+ * （门面内允许碰引擎私有成员，门面外不许）。换完之后：
+ *   * 还没部署 → 立刻生效（下次 _deploy 按新定义造单位）；
+ *   * 已经部署 → 要让玩家撤退重放，因为引擎不支持给在场单位热替换装配。
  */
 function switchDeployedSkill(unit, wantIndex) {
   const skills = unit.def?.raw?.skills || unit.def?.loadout?.skills || null;
   const max = Math.max(0, (Array.isArray(skills) ? skills.length : 1) - 1);
   const idx = Math.max(0, Math.min(wantIndex, max));
-  if (idx === (unit.skill?.index ?? 0)) return false;
+  const cur = unit.skill?.index ?? unit.def?.skill?.index ?? 0;
+  if (idx === cur) return false;
 
-  // 路径 A：引擎有这个能力就直接用
-  if (typeof unit.setSkill === 'function') {
-    try {
-      if (unit.setSkill(idx)) {
-        warn(`已换技能：S${idx + 1} ${unit.skill?.name || ''}（技力清零）`);
-        return true;
-      }
-    } catch { /* 落到下面 */ }
+  const name = skills?.[idx]?.name || `S${idx + 1}`;
+  const ok = session.switchSkill(unit, idx);
+  if (!ok) {
+    warn('这个单位的技能换不了（自设/召唤物要撤退重放）', true);
+    return false;
   }
-  // 路径 B：软换 —— 只改显示的技能与技力需求，不动触发逻辑
-  if (unit.skill && unit.def?.raw?.skills?.[idx]) {
-    const rec = unit.def.raw.skills[idx];
-    try {
-      unit.skill.index = idx;
-      if (rec.name) unit.skill.name = rec.name;
-      if (Number.isFinite(rec.spCost)) unit.skill.spCost = rec.spCost;
-      if (Number.isFinite(rec.duration)) unit.skill.duration = rec.duration;
-      unit.skill.sp = 0;                     // 换技能清空技力，避免立刻开出来
-      unit.mem = { ...(unit.mem || {}) };
-      warn(`已换技能：S${idx + 1} ${rec.name || ''}（技力清零，机制沿用当前装配）`);
-      return true;
-    } catch (err) {
-      warn(String(err?.message || err), true);
-    }
-  }
-  warn('这个单位的技能不能就地更换，撤退后重放可换', true);
-  return false;
+  const deployed = !!unit.deployed;
+  warn(deployed
+    ? `已记为 S${idx + 1} ${name}，撤退重放后生效`
+    : `已换技能：S${idx + 1} ${name}`);
+  return true;
 }
 
 /* ---- 放置：手牌 → 格子 → 官方四向轮盘 → 落地 ---- */
@@ -317,7 +329,7 @@ function selectLevelCard(id) {
   clearSelection();
   state.ui.active = id;
   state.ui.popOpen = false;
-  state.ui.skillIndex = Math.min(state.document.skillSelections[id] ?? 0, Math.max(0, (def.skills?.length || 1) - 1));
+  state.ui.skillIndex = Math.min(skillIndexOf(id), Math.max(0, (def.skills?.length || 1) - 1));
   applyTileOnly();
   renderHand();
   if (!def.tokenId) audio.voice(def.assets?.voice || def.charId, 'select');
@@ -349,7 +361,7 @@ function deploymentRecord(id) {
   if (!levelRun || !session.alive()) return units()[id];
   const base = units()[id];
   return session.content()?.getChess(id, {
-    skillIndex: state.document.skillSelections[id],
+    skillIndex: skillIndexOf(id),
     moduleId: levelRun ? levelRun.moduleSelections[id] : (state.ui.moduleSelections?.[id] || base?.module?.id),
   })?.raw || base;
 }
@@ -926,7 +938,7 @@ const actions = {
     state.ui.active = id;
     state.ui.tool = null;             // 从改图/放怪切回放置干员
     const maxSkill = Math.max(0, (rec.skills?.length || 1) - 1);
-    state.ui.skillIndex = Math.min(state.document.skillSelections[id] ?? 0, maxSkill);
+    state.ui.skillIndex = Math.min(skillIndexOf(id), maxSkill);
     if (state.ui.selectedUid != null) clearSelection({ keepHand: true });
     applyTileOnly();                  // 拿着牌时「只认格子」：敌人在格子上也不会把点击吃掉
     renderHand();
@@ -959,7 +971,13 @@ const actions = {
     if (live) {
       if (live.skill && !live.skill.active) {
         const ok = switchDeployedSkill(live, Math.max(0, i));
-        if (ok) { saveLocal(); renderHand(); syncHud(true); return; }
+        if (ok) {
+          // 记到选技表里，撤退重放时 deploymentRecord → skillIndexOf 才会读回这个选择。
+          // 以前只换了场上那一刻的技能对象，重放又回到默认技能 —— 就是用户说的「切了还是原来的」。
+          const chessId = live.defId || live.def?.id;
+          if (chessId) state.document.skillSelections[chessId] = Math.max(0, i);
+          saveLocal(); renderHand(); syncHud(true); return;
+        }
       } else if (live.skill?.active) {
         // 技能开着的时候换不了：直接说清楚，不要落到下面那条「手牌」路径上（那里 active 是 null，
         // 什么都不会发生，玩家会以为点了没反应）
@@ -1039,7 +1057,7 @@ const actions = {
     resetMultiPick();
     if (added) {
       state.ui.active = ids.find((id) => state.document.squad.includes(id)) || state.ui.active;
-      state.ui.skillIndex = state.document.skillSelections[state.ui.active] ?? 0;
+      state.ui.skillIndex = clampSkillIndexOf(state.ui.active);
       applyTileOnly();
     }
     saveLocal();
@@ -1064,7 +1082,7 @@ const actions = {
         return;
       }
       state.ui.active = id;
-      state.ui.skillIndex = state.document.skillSelections[id] ?? 0;
+      state.ui.skillIndex = clampSkillIndexOf(id);
       hud.setPicker(refs, false);
       applyTileOnly();
       renderHand();
@@ -1084,7 +1102,7 @@ const actions = {
       state.document.squad.push(id);
     }
     state.ui.active = id;
-    state.ui.skillIndex = state.document.skillSelections[id] ?? 0;
+    state.ui.skillIndex = clampSkillIndexOf(id);
     applyTileOnly();                  // 选人器里点了一张 = 立刻进入「只认格子」的放置状态
     saveLocal();
     renderHand();
@@ -1094,6 +1112,8 @@ const actions = {
 
   onTab(tab) {
     if (levelRun) return;
+    // 切到敌人页就退出地形笔刷，让点击回到「放怪」语义
+    if (tab === 'enemy' && state.ui.tool?.kind === 'paint') state.ui.tool = null;
     // 离开「刷敌人」页 = 结束投放状态，避免点击仍被格子吃掉、导致改地形刷不上
     if (state.ui.place && tab !== 'enemy') setPlace(null);
     if (state.ui.tab === tab && state.ui.drawerOpen) { state.ui.drawerOpen = false; renderDrawer(true); return; }
@@ -1103,6 +1123,9 @@ const actions = {
   },
 
   onEnemy(i) {
+    // 选敌人 = 要放怪，必须先把地形笔刷放掉；否则 onTileClick 里 tool 优先，
+    // 点地图会变成刷地形、敌人永远放不下去。
+    state.ui.tool = null;
     state.ui.enemyIndex = Math.max(0, Math.min(ENEMIES.length - 1, i));
     // 选中敌人 = 进入“点地放置”（默认钉住）；想让它走路，再点「画路线」
     if (state.ui.place == null || state.ui.place === 'tile') {
@@ -1296,6 +1319,53 @@ const actions = {
     if (m.index === 2 && selectedUnit()?.skill.active) return warn('救济进行中不能换面具（技能结束后再换）', true);
     if (m.switchPersona((m.index + 1) % 3)) { refs._detailUid = null; syncHud(true); warn(`切换至${m.names[m.index]}`); }
     else warn('切换失败（状态已变，再点一次试试）', true);
+  },
+  /**
+   * 多形态干员换形态（用户要求「阿米娅可以进行形态切换 每个形态有不同的技能」）。
+   *
+   * 形态在数据层是三条独立的 chess 记录（术师 / 近卫 / 医疗），所以「换形态」本质是
+   * 把这只单位的 chessId 换成另一条。两种入口分开处理：
+   *   * 场上选中的单位 → session.switchPersona（battle.js 里换 content + baseChanges +
+   *     范围，在场就撤退原地重放，玩家立刻看到新形态）；
+   *   * 手牌里还没部署 → 直接换 squad 里那张卡，部署出去自然就是新形态。
+   */
+  onPersona(chessId) {
+    if (!chessId) return;
+    const live = selectedUnit();
+    if (live && live.kind === 'op') {
+      if (live.defId === chessId) return;
+      const r = session.switchPersona(live, chessId);
+      const label = units()[chessId]?.personaName || units()[chessId]?.name || chessId;
+      if (!r) return warn('形态切换失败（这个单位没有可切换的形态）', true);
+      refs._detailUid = null;
+      syncHud(true);
+      renderHand();
+      // 'bench' 时形态其实已经切好了，只是这块地放不下新形态（近战站高台 / 高台站地面），
+      // 硬留在原地会变成一个不合法单位，所以退回手牌让玩家自己重新摆。
+      if (r === 'bench') warn(`已切到${label}，这块地放不下新形态，已退回手牌`, true);
+      else warn(`形态切换：${label}`);
+      return;
+    }
+    const from = state.ui.active;
+    if (!from || from === chessId) return;
+    const squad = state.document.squad;
+    if (!squad.includes(chessId)) {
+      const i = squad.indexOf(from);
+      if (i < 0) return warn('换形态要做的是手牌里的干员，先把它放进手牌', true);
+      squad.splice(i, 1, chessId);
+    } else {
+      // 目标形态已经在手牌里了：把当前这张去掉，避免出现两张阿米娅
+      const i = squad.indexOf(from);
+      if (i >= 0) squad.splice(i, 1);
+    }
+    state.ui.active = chessId;
+    state.ui.skillIndex = clampSkillIndexOf(chessId);
+    refs._detailUid = null;
+    applyTileOnly();
+    saveLocal();
+    renderHand();
+    syncHud(true);
+    warn(`形态切换：${units()[chessId]?.personaName || units()[chessId]?.name || chessId}`);
   },
   onEquipment() {
     const m = selectedUnit()?.mem.customMakoto;

@@ -1,0 +1,433 @@
+/* ============================================================================
+ * home-v2.css —— 主界面（/studio/home.html）横屏版式
+ *
+ * 版式参照明日方舟「日间主界面」（用户 2026-11-04 给的 P2 参考图）：
+ *   左上角一列图标按钮 · 右上角资源条 · 左半区品牌与水印 · 右半区白色方块矩阵
+ *   （一块大「终端」块 + 4 块入口 + 一条红底信息条）。
+ * 配色全部取 ark-ui.css 的 --ark-* token，与沙盒、编辑器共用一套。
+ *
+ * 硬规矩：尺寸一律 px / clamp(vh)，绝不写 rem（本项目 1rem ≈ 33px）。
+ * 横屏优先：纵向尺寸跟 vh 走，横向铺满。
+ * ========================================================================== */
+
+/* ---- 0. 文档 ----------------------------------------------------------- */
+html.ark-doc body.ark-home-doc {
+  margin: 0;
+  min-height: 100svh;
+  overflow: hidden;
+  background: var(--ark-bg);
+  color: var(--ark-ink);
+  font-family: var(--ark-font);
+}
+
+/* ---- 1. 骨架 ----------------------------------------------------------- */
+.ark-home {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) min(52vw, 680px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--ark-gap) calc(var(--ark-pad) * 1.2);
+  height: 100svh;
+  padding: calc(var(--ark-pad) * .9) var(--ark-pad) var(--ark-pad);
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+/* 背景：浅灰底 + 右上斜切高光 + 细网格 */
+.ark-home__bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(112deg, #f4f6f6 0%, #e9ebeb 46%, #dfe4e5 100%);
+}
+.ark-home__bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, #ffffff88 1px, transparent 1px),
+    linear-gradient(0deg, #ffffff88 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: .5;
+  mask-image: linear-gradient(180deg, #0009, #0000 78%);
+}
+.ark-home__bg::after {
+  content: '';
+  position: absolute;
+  right: -8vw;
+  top: -22vh;
+  width: 62vw;
+  height: 96vh;
+  background: linear-gradient(200deg, #ffffffcc, #ffffff00 62%);
+  transform: rotate(8deg);
+  opacity: .75;
+}
+
+/* ---- 2. 顶栏：左图标 / 右资源 ------------------------------------------ */
+.ark-home__top {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ark-gap);
+  min-width: 0;
+}
+
+.ark-home__marks {
+  display: flex;
+  gap: clamp(6px, 1vh, 10px);
+  align-items: center;
+}
+.ark-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(26px, 4.4vh, 38px);
+  height: clamp(26px, 4.4vh, 38px);
+  border: 1px solid var(--ark-line);
+  background: #ffffffcc;
+  color: var(--ark-ink-2);
+  text-decoration: none;
+  font-size: clamp(12px, 2vh, 16px);
+  line-height: 1;
+}
+.ark-mark:hover { border-color: var(--ark-accent); color: var(--ark-accent); }
+.ark-mark svg { width: 60%; height: 60%; }
+
+/* 资源条：白底细条，条内数字靠右，与 P2 顶部一致 */
+.ark-home__res {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  background: #ffffffd9;
+  border: 1px solid var(--ark-line-2);
+  box-shadow: var(--ark-shadow);
+}
+.ark-res {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: clamp(4px, .9vh, 8px) clamp(8px, 1.4vh, 14px);
+  border-left: 1px solid var(--ark-line-3);
+}
+.ark-res:first-child { border-left: 0; }
+.ark-res b {
+  font: 700 var(--ark-t-md)/1 var(--ark-mono);
+  color: var(--ark-ink);
+  letter-spacing: -.02em;
+}
+.ark-res i {
+  font-style: normal;
+  font-size: var(--ark-t-xs);
+  color: var(--ark-ink-3);
+}
+.ark-res--accent b { color: var(--ark-accent); }
+
+/* ---- 3. 左半区：品牌 + 新闻 -------------------------------------------- */
+.ark-home__left {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: clamp(4px, 1.4vh, 16px) 0 0 clamp(2px, .6vw, 12px);
+}
+
+/* 超大斜体水印，压在左区下方，P2 里那栋建筑的位置 */
+.ark-home__watermark {
+  position: absolute;
+  left: clamp(-6px, -0.4vw, 0px);
+  bottom: calc(var(--ark-pad) * 2.2);
+  font: 800 clamp(42px, 12vh, 132px)/.86 var(--ark-font);
+  letter-spacing: -.04em;
+  color: #ffffff;
+  text-shadow: 0 1px 0 #ffffff, 0 0 1px #cfd6d7;
+  opacity: .9;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 0;
+}
+
+.ark-home__brand { position: relative; z-index: 1; }
+.ark-home__brand .ark-eyebrow { display: block; margin-bottom: clamp(4px, 1vh, 10px); }
+.ark-home__brand h1 {
+  margin: 0;
+  font: 800 var(--ark-t-xxl)/1.04 var(--ark-font);
+  letter-spacing: -.03em;
+  color: var(--ark-ink);
+}
+.ark-home__brand h1 em { font-style: normal; color: var(--ark-accent); }
+.ark-home__brand p {
+  margin: clamp(6px, 1.2vh, 12px) 0 0;
+  font-size: var(--ark-t-sm);
+  color: var(--ark-ink-2);
+  letter-spacing: .04em;
+}
+
+/* 底部红底信息条（P2 左下的 BREAKING NEWS） */
+.ark-home__news {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  align-self: flex-start;
+  max-width: min(100%, 640px);
+  background: var(--ark-panel);
+  border: 1px solid var(--ark-line-2);
+  box-shadow: var(--ark-shadow);
+}
+.ark-news-tag {
+  display: flex;
+  align-items: center;
+  padding: 0 clamp(8px, 1.4vh, 14px);
+  background: var(--ark-red);
+  color: #fff;
+  font: 700 var(--ark-t-xs)/1 var(--ark-mono);
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+.ark-news-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: clamp(5px, 1vh, 9px) clamp(10px, 1.6vh, 16px);
+  min-width: 0;
+}
+.ark-news-body b { font-size: var(--ark-t-sm); font-weight: 700; }
+.ark-news-body span { font-size: var(--ark-t-xs); color: var(--ark-ink-2); line-height: 1.5; }
+
+/* ---- 4. 右半区：方块矩阵 ------------------------------------------------ */
+.ark-home__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: clamp(6px, 1.1vh, 11px);
+  min-width: 0;
+  align-content: stretch;
+}
+
+.ark-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(3px, .7vh, 7px);
+  padding: clamp(6px, 1.45vh, 14px) clamp(8px, 1.35vh, 14px);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #ffffff;
+  background: #ffffffd9;
+  box-shadow: 0 1px 0 #ffffff inset, 0 2px 10px #1a2a3010;
+  color: var(--ark-ink);
+  text-decoration: none;
+  transition: border-color 130ms linear, background 130ms linear, transform 130ms ease;
+}
+.ark-tile:hover {
+  border-color: var(--ark-accent);
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+.ark-tile:active { transform: translateY(0); }
+
+/* 方块里的大号半透明水印字（P2 每块右下角那个浅色图形） */
+.ark-tile__water {
+  position: absolute;
+  right: clamp(2px, .6vh, 10px);
+  bottom: calc(clamp(2px, .6vh, 10px) * -1);
+  font: 800 clamp(30px, 7.4vh, 74px)/1 var(--ark-font);
+  letter-spacing: -.03em;
+  color: var(--ark-ink);
+  opacity: .06;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ark-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.ark-tile__no {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  color: var(--ark-ink-3);
+  font: var(--ark-t-xs)/1 var(--ark-mono);
+  letter-spacing: .14em;
+}
+.ark-tile__go {
+  white-space: nowrap;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ark-ink-3);
+  font-size: var(--ark-t-xs);
+}
+.ark-tile:hover .ark-tile__go { color: var(--ark-accent); }
+
+.ark-tile__title {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font: 700 var(--ark-t-lg)/1.12 var(--ark-font);
+  letter-spacing: -.01em;
+}
+.ark-tile__desc {
+  position: relative;
+  z-index: 1;
+  font-size: var(--ark-t-xs);
+  line-height: 1.45;
+  color: var(--ark-ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 强调块（青色）：P2 的「采购中心」位 */
+.ark-tile--accent {
+  border-color: var(--ark-accent-2);
+  background: linear-gradient(160deg, #00a8d0, #0089ad);
+  color: #fff;
+}
+.ark-tile--accent .ark-tile__no,
+.ark-tile--accent .ark-tile__go,
+.ark-tile--accent .ark-tile__desc { color: #ffffffd0; }
+.ark-tile--accent .ark-tile__water { color: #fff; opacity: .14; }
+.ark-tile--accent:hover { background: linear-gradient(160deg, #00b4de, #0092b8); border-color: #fff; }
+
+/* 终端大块：跨两列，左侧大数字 + 右侧文字 + 底部橙条 */
+.ark-tile--terminal {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(8px, 1.6vh, 18px);
+  padding-block: clamp(8px, 1.6vh, 18px);
+}
+.ark-terminal__num {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-right: clamp(8px, 1.6vh, 16px);
+  border-right: 1px solid var(--ark-line);
+}
+.ark-terminal__num b {
+  font: 800 clamp(28px, 6.4vh, 58px)/1 var(--ark-font);
+  letter-spacing: -.04em;
+}
+.ark-terminal__num i { font-style: normal; font-size: var(--ark-t-xs); color: var(--ark-ink-3); }
+.ark-terminal__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ark-terminal__main strong { font: 700 var(--ark-t-md)/1.15 var(--ark-font); }
+.ark-terminal__main span { font-size: var(--ark-t-xs); color: var(--ark-ink-2); }
+.ark-terminal__bar {
+  position: relative;
+  height: clamp(3px, .7vh, 5px);
+  margin-top: 2px;
+  background: var(--ark-line-3);
+}
+.ark-terminal__bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 68%;
+  background: var(--ark-amber);
+}
+
+/* ---- 5. 竖屏降级 ------------------------------------------------------- */
+@media (max-aspect-ratio: 1/1) {
+  html.ark-doc body.ark-home-doc { overflow: auto; }
+  .ark-home {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    height: auto;
+    min-height: 100svh;
+    gap: 10px;
+    padding: 12px 12px 64px;
+  }
+  .ark-home__top { flex-direction: column; align-items: stretch; gap: 8px; }
+  .ark-home__res { align-self: flex-start; }
+  .ark-home__watermark { display: none; }
+  .ark-home__left { gap: 12px; }
+  .ark-home__grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
+  .ark-tile { min-height: 0; padding: 12px 14px; }
+  .ark-tile--terminal { grid-column: 1 / -1; min-height: 0; }
+  .ark-tile__no { font-size: 10px; letter-spacing: .1em; }
+  .ark-tile__go { font-size: 10px; }
+  .ark-home__news { max-width: 100%; }
+}
+
+/* ---- 6. 左上角图标列里的「音乐 / 设置」-------------------------------- */
+/* 这两个按钮本体是 terminal-shell.js 注入的 .terminal-options（固定右下），
+   在主界面隐藏它，改用图标列里的同名按钮转发点击。 */
+html.ark-doc body.ark-home-doc .terminal-options { display: none; }
+
+body.ark-home-doc .ark-mark {
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+body.ark-home-doc .ark-mark__state {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  background: var(--ark-ink-3);
+}
+body.ark-home-doc .ark-mark__state.is-on { background: var(--ark-accent); }
+
+/* 快捷入口改成「图标 + 文字」，光看图没人知道哪个是哪个 */
+html.ark-doc body.ark-home-doc .ark-mark {
+  flex-direction: column;
+  gap: 3px;
+  height: auto;
+  min-height: 34px;
+  padding: 4px 2px 3px;
+}
+html.ark-doc body.ark-home-doc .ark-mark svg { width: 16px; height: 16px; }
+html.ark-doc body.ark-home-doc .ark-mark__label {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .02em;
+  color: inherit;
+  opacity: .9;
+  white-space: nowrap;
+}
+html.ark-doc body.ark-home-doc .ark-mark:hover .ark-mark__label { opacity: 1; }
+
+/* ============================================================================
+ * 横屏黑边兜底（用户报「主界面横屏露黑边」）
+ * theme.css 给 html/body 写的是 background: var(--bg-0) = #0c0f0e（深色游戏底），
+ * .ark-home 用的是 100svh —— svh 比物理可视高度小一点，露出的那一条就是深色底。
+ * 这里把主页的 html/body 底色、以及外层容器的溢出都补成站点浅灰。
+ * ========================================================================== */
+html.ark-doc.hs-doc,
+html.ark-doc.hs-doc body.ark-home-doc {
+  background: #e9ebeb !important;
+  min-height: 100vh;
+  min-height: 100svh;
+  height: 100%;
+  overflow: hidden;
+}
+html.ark-doc.hs-doc .ark-home {
+  height: 100vh;
+  height: 100svh;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+/* 覆盖 #root / #app 之类的外层如果存在，也让它跟页面同色 */
+html.ark-doc.hs-doc #app,
+html.ark-doc.hs-doc #root {
+  background: #e9ebeb;
+  min-height: 100%;
+}

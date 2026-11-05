@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=800,initial-scale=1,viewport-fit=cover">
+<title>vp800</title>
+<style>html,body{margin:0;padding:0;background:#22262a;overflow:hidden}iframe{display:block;border:0;width:800px;height:360px}</style>
+</head><body>
+<iframe id="f" src="/studio/home.html"></iframe>
+<script>
+var q=new URLSearchParams(location.search);
+var f=document.getElementById('f');
+if(q.get('src')) f.src=q.get('src');
+</script></body></html>

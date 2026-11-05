@@ -1,0 +1,761 @@
+/* ==========================================================================================
+ * 详情面板（点击干员 / 敌人弹出的那张卡）—— 重排版
+ *
+ * 为什么单独一个文件而不是改 studio/sandbox.css：
+ *   旧 .dt__* 规则散在 studio/sandbox.css（约 70 条）与 sandbox/hud-theme.css（约 87 条）里，
+ *   两处互相覆盖，改一处永远被另一处压回去。这里一次性用 `.sb .hud .hud__detail` 前缀
+ *   （specificity 0,3,x，压过 hud-theme 的 0,2,x 与 sandbox.css 的 0,1,x）重写面板内部全部版式。
+ *
+ * ⚠ 特别注意 hud-theme.css:300-360 那一段：它是「整块左栏大面板」的绝对定位版式
+ *   （.dt__portrait 是 inset:0 且 z-index:-1 的背景图、.dt__head / .dt__stats / .dt__range-preview
+ *   全是 position:absolute 挂在 .dt__basic 上）。只覆盖 width/color 是不够的 ——
+ *   只要漏掉 inset / position / z-index / min-height 其中任何一个，元素就会飞出去或者被压到背景后面。
+ *   所以本文件每个盒子都把它当成「已带脏内联属性」来显式重置。
+ *
+ * 三条硬约束（改之前先看）：
+ *   1. 本项目 1rem 在手机横屏只有 33px（theme.css 的 clamp），所以这里**一律用 px**；
+ *      写 .xx rem 的控件在手机上必然被压成一条缝。
+ *   2. `.dt__basicbtns` 会被 detail.js 搬进固定浮层 #selection-actions，
+ *      那里三个按键（技能/范围/撤退）的几何在 hud-theme.css:361-400，本文件不碰。
+ *   3. 每帧只更新 [data-k] 节点，DOM 结构是契约 —— 本文件只负责样式，不改结构。
+ * ========================================================================================== */
+
+/* ---- 0. 面板外壳 ------------------------------------------------------------------------ */
+.sb .hud .hud__detail {
+  left: 8px;
+  top: auto;                    /* hud-theme 给了 top:66px，不重置会被拉开成全高 */
+  right: auto;
+  bottom: 8px;
+  width: min(880px, calc(100vw - 130px));
+  min-width: 0;                 /* hud-theme 的 min-width:250px 会在窄屏撑破 */
+  height: auto;
+  max-height: min(74vh, 430px);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background: var(--terminal-scan), linear-gradient(150deg, #24282cf7, #14181bf8);
+  border: 1px solid var(--hair-2);
+  border-left: 3px solid var(--amber);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px #000a;
+  clip-path: none;              /* 斜切角会把右上角的按钮切掉，扁平圆角更稳 */
+  overflow: hidden;
+}
+
+/* ---- 1. 立绘 ---------------------------------------------------------------------------- */
+.sb .hud .hud__detail .dt__portrait {
+  flex: 0 0 auto;
+  width: 108px;
+  height: 108px;
+  min-width: 0;
+  align-self: flex-start;
+  position: relative;           /* 覆盖 hud-theme 的 absolute */
+  inset: auto;                  /* 它原来写 inset:0 0 0 -12px */
+  z-index: auto;                /* 它原来写 z-index:-1，不重置立绘会被塞到背景后面 */
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1b2126, #0d1114);
+  pointer-events: none;
+}
+.sb .hud .hud__detail .dt__portrait img {
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  max-width: none;
+  max-height: none;
+  opacity: 1;                   /* hud-theme 给了 .82 + 渐隐 mask，新布局不需要 */
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+/* fitPortrait() 写 inline width/height/left/top，`position:absolute` 必须由 CSS 给，
+   并且 object-fit 要为 fill —— JS 已经按 bounds 算好了缩放，再 contain 会二次变形。 */
+.sb .hud .hud__detail .dt__portrait.is-framed img {
+  position: absolute;
+  object-fit: fill;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+/* 召唤物：hud-theme 给了一组「缩小塞进上半屏」的 inset，不再需要 */
+.sb .hud .hud__detail.is-token .dt__portrait {
+  inset: auto;
+  bottom: auto;
+  left: auto;
+  right: auto;
+}
+.sb .hud .hud__detail.is-token .dt__portrait img { opacity: 1; object-position: center top; }
+
+/* ---- 2. 左栏：名字 / 职业 / 血条 --------------------------------------------------------- */
+.sb .hud .hud__detail .dt__basic {
+  flex: 0 0 auto;
+  width: 208px;
+  min-width: 0;
+  height: auto;                 /* hud-theme: height:46% */
+  min-height: 0;                /* hud-theme: min-height:255px */
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px;
+  box-sizing: border-box;
+  position: relative;           /* hud-theme 的 absolute 子元素锚点仍可用 */
+  border: 0;
+  border-right: 1px solid var(--hair);
+}
+.sb .hud .hud__detail .dt__head {
+  display: block;
+  position: static;             /* hud-theme: absolute; inset:0 */
+  inset: auto;
+}
+.sb .hud .hud__detail .dt__headtext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  position: static;             /* hud-theme: absolute; bottom:calc(...) */
+  inset: auto;
+  text-shadow: none;
+}
+
+.sb .hud .hud__detail .dt__stars {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: var(--dt-rarity, #f8bf00);
+}
+.sb .hud .hud__detail .dt__elite {
+  font-style: normal;
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: #18130d;
+  background: var(--amber);
+  border-radius: 3px;
+}
+
+.sb .hud .hud__detail .dt__nameline { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sb .hud .hud__detail .dt__profession {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;                   /* hud-theme 给了 padding:4px + 背景 + 边框 */
+  margin: 0;
+  background: none;
+  border: 0;
+  object-fit: contain;
+}
+.sb .hud .hud__detail .dt__name {
+  display: block;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #f0efe4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb .hud .hud__detail .dt__en {
+  font-size: 10.5px;
+  line-height: 1.2;
+  letter-spacing: .04em;
+  color: #8b9088;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb .hud .hud__detail .dt__classline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #b9beb4;
+}
+.sb .hud .hud__detail .dt__cls { color: #dfe3d8; }
+.sb .hud .hud__detail .dt__sepd {
+  width: 1px;
+  height: 9px;
+  background: var(--hair-2);
+}
+.sb .hud .hud__detail .dt__sub { color: #a8aea2; }
+.sb .hud .hud__detail .dt__pos {
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #9fb8a3;
+  background: #63d7bd12;
+  border: 1px solid #63d7bd44;
+  border-radius: 3px;
+}
+.sb .hud .hud__detail .dt__level {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  height: auto;                 /* hud-theme: height:clamp(29px,3vw,44px) */
+  margin: 0 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+  color: #e6e6d9;
+}
+.sb .hud .hud__detail .dt__level small { font-size: 9px; line-height: 1; color: #8b9088; }
+.sb .hud .hud__detail .dt__level img { display: none; }
+
+/* 血条：横向细条 + 数字压在右端 */
+.sb .hud .hud__detail .dt__hp {
+  position: relative;           /* hud-theme: absolute; bottom:7px; left/right:-12px */
+  inset: auto;
+  display: block;
+  height: 17px;
+  min-height: 0;
+  margin-top: auto;
+  overflow: hidden;
+  background: #0b0e11cc;
+  border: 1px solid var(--hair-2);
+  border-radius: 3px;
+}
+.sb .hud .hud__detail .dt__hp > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  display: block;
+  background: linear-gradient(90deg, #3f8f5a, #63d7bd);
+}
+.sb .hud .hud__detail .dt__hp .dt__hp-label {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateY(-50%);
+  font-size: 9.5px;
+  color: #c9cec4;
+  text-shadow: none;
+}
+.sb .hud .hud__detail .dt__hp > b {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  bottom: auto;
+  min-width: 0;
+  padding: 0;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.1;
+  color: #fff;
+  background: none;
+  text-align: right;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+}
+
+/* 敌人专属：移速 / 重量 / 免疫… */
+.sb .hud .hud__detail .dt__enemyinfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.sb .hud .hud__detail .dt__enemyinfo span {
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #cfd4c9;
+  background: #ffffff08;
+  border: 1px solid var(--hair-2);
+  border-radius: 3px;
+}
+
+/* ---- 3. 右栏 ---------------------------------------------------------------------------- */
+.sb .hud .hud__detail .dt__right {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 7px 8px 8px;
+  box-sizing: border-box;
+  gap: 6px;
+  position: relative;
+}
+
+/* 八格基础数值：4 列 × 2 行 */
+.sb .hud .hud__detail .dt__grid {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+.sb .hud .hud__detail .dt__stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1px;
+  height: auto;                 /* hud-theme: height:var(--detail-stat-line) */
+  padding: 3px 6px;
+  min-width: 0;
+  line-height: 1.15;
+  background: #c4c2ac06;
+  border: 0;
+  border-left: 2px solid #c4c2ac55;
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__stat i {
+  font-style: normal;
+  font-size: 9.5px;
+  line-height: 1.1;
+  color: #9aa094;
+  white-space: nowrap;
+}
+.sb .hud .hud__detail .dt__stat b {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.15;
+  color: #e6e6d9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 分页条 */
+/* ------------------------------------------------------------------ 段 2.5 形态切换条
+   只有多形态干员（阿米娅升变）才有这一段，数据层是三条独立 chessId，
+   所以按钮的 data-id 就是目标形态的 chessId（见 ui/detail.js 模板）。 */
+.sb .hud .hud__detail .dt__persona {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  padding: 0 0 5px;
+  border-bottom: 1px solid var(--hair);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sb .hud .hud__detail .dt__persona::-webkit-scrollbar { display: none; }
+.sb .hud .hud__detail .dt__pbtn {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  line-height: 1;
+  color: #a8b0a6;
+  background: #ffffff08;
+  border: 1px solid #ffffff18;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.sb .hud .hud__detail .dt__pbtn:hover { color: #e4e8de; background: #ffffff0f; border-color: #ffffff2a; }
+.sb .hud .hud__detail .dt__pbtn.is-on {
+  color: #16201c;
+  background: #63d7bd;
+  border-color: #63d7bd;
+  font-weight: 700;
+  cursor: default;
+}
+.sb .hud .hud__detail .dt__pnote { flex: 0 0 auto; margin-left: auto; font-size: 10px; color: #7d857c; white-space: nowrap; }
+
+.sb .hud .hud__detail .dt__tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  width: auto;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+}
+.sb .hud .hud__detail .dt__tab {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 11px;
+  font-size: 12px;
+  line-height: 1;
+  color: #9a9e94;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+.sb .hud .hud__detail .dt__tab:hover { color: #e4e8de; background: #ffffff08; }
+
+/*
+ * 「编辑此干员」——跳到 /studio/operators.html?id=<chessId>，那边能改数值 / 技能 / 天赋 / 模组。
+ *
+ * 为什么用 <a> 而不是 button：它是一次页面跳转，不是战斗内动作。沙盒里的点击事件是
+ * 统一委托到 [data-act] 上的（ui/shell.js），给一个不含 data-act 的 <a> 最省事，
+ * 也不会误触那条委托链。
+ * margin-left:auto 把它推到分页条最右端 —— 分页本身会随「有没有模组」增减，钉在右端
+ * 位置才不会跳。
+ */
+.sb .hud .hud__detail .dt__edit {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+  height: 22px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  line-height: 1;
+  color: #ffc76b;
+  text-decoration: none;
+  background: #ffc76b14;
+  border: 1px solid #ffc76b44;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.sb .hud .hud__detail .dt__edit:hover { color: #1d1608; background: #ffc76b; border-color: #ffc76b; }
+.sb .hud .hud__detail .dt__tab.is-on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: #63d7bd0a;
+  box-shadow: none;
+}
+
+/* 正文：唯一可滚动的区域 */
+.sb .hud .hud__detail .dt__info {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  scrollbar-width: thin;
+}
+.sb .hud .hud__detail .dt__info::-webkit-scrollbar { width: 5px; }
+.sb .hud .hud__detail .dt__info::-webkit-scrollbar-thumb { background: var(--hair-2); border-radius: 3px; }
+
+/* 攻击范围图（放右栏底部，横排一个方块，不再挤在左栏竖着堆） */
+.sb .hud .hud__detail .dt__range-preview {
+  flex: none;
+  position: static;             /* hud-theme: absolute; left:clamp(...); bottom:23px */
+  inset: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  text-align: left;
+  background: #ffffff06;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.sb .hud .hud__detail .dt__range-preview > span { display: block; width: auto; height: auto; color: #8fa593; }
+.sb .hud .hud__detail .dt__range-preview svg { display: block; width: auto; height: 30px; }
+.sb .hud .hud__detail .dt__range-preview small {
+  font-size: 10.5px;
+  line-height: 1.2;
+  color: #9aa094;
+  white-space: nowrap;
+}
+
+/* ---- 4. 正文排版 ------------------------------------------------------------------------ */
+.sb .hud .hud__detail .dt__seg {
+  padding: 5px 0;
+  margin: 0;
+  border-bottom: 1px solid #ffffff0a;
+}
+.sb .hud .hud__detail .dt__seg:last-child { border-bottom: 0; }
+.sb .hud .hud__detail .dt__seg-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  min-width: 0;
+}
+.sb .hud .hud__detail .dt__seg-h b {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0efe4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb .hud .hud__detail .dt__seg-k {
+  flex: none;
+  padding: 1px 5px;
+  font-style: normal;
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: #e2bc7d;
+  background: #efa84b0a;
+  border: 1px solid #efa84b44;
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__seg-p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c2c7bd;
+  white-space: pre-line;        /* 游戏原文里带换行，保留 */
+  word-break: break-word;
+}
+.sb .hud .hud__detail .dt__seg-p--empty { color: #7d837a; font-style: italic; }
+.sb .hud .hud__detail .dt__seg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 3px;
+  font-size: 10px;
+  line-height: 1.15;
+}
+.sb .hud .hud__detail .dt__seg-meta i {
+  font-style: normal;
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #fff;
+  border: 0;
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__seg-meta .dt__meta--recovery { background: #8fbd28; }
+.sb .hud .hud__detail .dt__seg-meta .dt__meta--trigger { background: #777c80; }
+.sb .hud .hud__detail .dt__seg-meta .dt__meta--duration { background: none; padding-left: 0; color: #9aa094; }
+
+/* 技能块：图标在左、文字在右 */
+.sb .hud .hud__detail .dt__skill-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.sb .hud .hud__detail .dt__description-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  float: none;
+  margin: 0;
+  border: 1px solid #f1f1e766;
+  border-radius: 4px;
+}
+.sb .hud .hud__detail .dt__skill-copy { flex: 1 1 auto; min-width: 0; }
+
+.sb .hud .hud__detail .dt__text-value { color: #00b7f1; }
+.sb .hud .hud__detail .dt__text-note { color: #ffb512; }
+.sb .hud .hud__detail .dt__text-effect { color: inherit; }
+
+/* ---- 5. 模组页 -------------------------------------------------------------------------- */
+.sb .hud .hud__detail .dt__mod {
+  padding: 6px 7px;
+  margin-bottom: 5px;
+  background: #ffffff05;
+  border: 1px solid var(--hair);
+  border-radius: 5px;
+}
+.sb .hud .hud__detail .dt__mod.is-on {
+  background: #63d7bd0d;
+  border-color: #63d7bd66;
+  box-shadow: inset 0 0 0 1px #63d7bd33;
+}
+.sb .hud .hud__detail .dt__mod-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+/* 特限模组（特限证章）：ISW / RA / SO 三族。青色描边区分于普通模组的琥珀，右上角一枚小徽标。 */
+.sb .hud .hud__detail .dt__mod.is-special {
+  background: #63d7bd08;
+  border-color: #63d7bd3d;
+}
+.sb .hud .hud__detail .dt__mod.is-special.is-on {
+  background: #63d7bd14;
+  border-color: #63d7bd80;
+}
+.sb .hud .hud__detail .dt__mod-special {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  font-size: 9.5px;
+  font-style: normal;
+  line-height: 15px;
+  color: #16211d;
+  background: #63d7bd;
+  border-radius: 2px;
+}
+
+.sb .hud .hud__detail .dt__mod-type {
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: #18130d;
+  background: var(--amber);
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__mod-name { font-size: 12.5px; line-height: 1.3; color: #f0efe4; }
+.sb .hud .hud__detail .dt__mod-lv { font-family: var(--font-mono); font-size: 10px; line-height: 1.3; color: #9aa094; }
+.sb .hud .hud__detail .dt__mod-on {
+  padding: 1px 5px;
+  font-style: normal;
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: #162407;
+  background: #c4ee42;
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__mod-def {
+  padding: 1px 5px;
+  font-style: normal;
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: #9aa094;
+  border: 1px solid var(--hair-2);
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__mod-attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 3px 0;
+}
+.sb .hud .hud__detail .dt__mod-attrs span {
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  color: #9fe8c9;
+  background: #63d7bd12;
+  border: 1px solid #63d7bd33;
+  border-radius: 3px;
+}
+.sb .hud .hud__detail .dt__mod-sub {
+  margin: 5px 0 1px;
+  font-size: 10px;
+  line-height: 1.3;
+  letter-spacing: .08em;
+  color: #8b9088;
+}
+.sb .hud .hud__detail .dt__mod-talent b { font-size: 12px; line-height: 1.3; color: #e6e6d9; }
+
+/* ---- 6. 面具 / 装备（阿米娅形态切换那条） ------------------------------------------------ */
+.sb .hud .hud__detail .dt__actions {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  gap: 5px;
+  padding: 0;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+.sb .hud .hud__detail .dt__alt {
+  flex: 1 1 auto;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  color: #dfe3d8;
+  background: #1c2227;
+  border: 1px solid var(--hair-2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.sb .hud .hud__detail .dt__alt.is-cooling { color: #9aa094; }
+.sb .hud .hud__detail .dt__alt.is-poor { opacity: .55; }
+.sb .hud .hud__detail .dt__cd {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--amber);
+}
+
+/* ---- 7. 自适应 --------------------------------------------------------------------------- */
+
+/* 手机横屏（典型 800×360）：面板铺满底部，立绘缩到 88px，八格仍两行 */
+@media (max-height: 620px) {
+  .sb .hud .hud__detail {
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    width: auto;
+    max-height: calc(100vh - 60px);
+  }
+  .sb .hud .hud__detail .dt__portrait { width: 88px; height: 88px; }
+  .sb .hud .hud__detail .dt__basic { width: 178px; padding: 6px 8px; gap: 4px; }
+  .sb .hud .hud__detail .dt__name { font-size: 15px; }
+  .sb .hud .hud__detail .dt__stat { padding: 2px 5px; }
+  .sb .hud .hud__detail .dt__stat b { font-size: 12px; }
+  .sb .hud .hud__detail .dt__stat i { font-size: 9px; }
+  .sb .hud .hud__detail .dt__tab { height: 24px; padding: 0 9px; font-size: 11.5px; }
+  .sb .hud .hud__detail .dt__seg-p { font-size: 11.5px; line-height: 1.55; }
+  .sb .hud .hud__detail .dt__range-preview svg { height: 26px; }
+}
+
+/* 窄屏（竖屏手机 / 小屏）：立绘移出主栏，左右两栏叠成上下 */
+@media (max-width: 620px) {
+  .sb .hud .hud__detail {
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    width: auto;
+    max-height: calc(100vh - 58px);
+    flex-wrap: wrap;
+  }
+  .sb .hud .hud__detail .dt__portrait { display: none; }
+  .sb .hud .hud__detail .dt__basic {
+    width: 100%;
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--hair);
+    padding: 7px 9px;
+  }
+  .sb .hud .hud__detail .dt__hp { margin-top: 2px; }
+  .sb .hud .hud__detail .dt__right { padding: 6px 9px 8px; }
+  .sb .hud .hud__detail .dt__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+}
+
+/* 大屏（平板 / 桌面）：立绘与左栏加宽一点，正文一行更长 */
+@media (min-width: 1100px) and (min-height: 700px) {
+  .sb .hud .hud__detail { width: min(1000px, calc(100vw - 160px)); max-height: min(72vh, 460px); }
+  .sb .hud .hud__detail .dt__portrait { width: 132px; height: 132px; }
+  .sb .hud .hud__detail .dt__basic { width: 236px; }
+  .sb .hud .hud__detail .dt__name { font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb .hud .hud__detail,
+  .sb .hud .hud__detail * { animation: none !important; transition-duration: 0ms !important; }
+}
+
+/* ── 手机上「技能/天赋看不清」：字号整体抬一档，描述改单列长行 ───────── */
+.sb .hud .hud__detail .dt__seg-p { font-size: 12.5px; line-height: 1.62; }
+.sb .hud .hud__detail .dt__seg-k { font-size: 11.5px; }
+.sb .hud .hud__detail .dt__seg-h b { font-size: 13px; }
+.sb .hud .hud__detail .dt__seg-meta { font-size: 10.5px; }
+.sb .hud .hud__detail .dt__name { font-size: 16px; }
+.sb .hud .hud__detail .dt__stat b { font-size: 13px; }
+.sb .hud .hud__detail .dt__stat i { font-size: 10px; }
+.sb .hud .hud__detail .dt__mod-talent b { font-size: 12.5px; }
+.sb .hud .hud__detail .dt__mod-lv { font-size: 10.5px; }
+.sb .hud .hud__detail .dt__tab { font-size: 12px; }
+@media (max-aspect-ratio: 1/1) {
+  .sb .hud .hud__detail .dt__seg-p { font-size: 13px; line-height: 1.7; }
+  .sb .hud .hud__detail .dt__name { font-size: 17px; }
+}

@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><title>vp</title>
+<style>
+html,body{margin:0;height:100%;background:#22262a;overflow:hidden}
+#wrap{position:absolute;left:0;top:0;transform-origin:0 0}
+iframe{display:block;border:0;background:#fff}
+</style></head><body>
+<div id="wrap"><iframe id="f" src="/studio/home.html"></iframe></div>
+<script>
+var q=new URLSearchParams(location.search);
+var W=+q.get('w')||1200, H=+q.get('h')||675;
+var src=q.get('src')||'/studio/home.html';
+var f=document.getElementById('f');
+f.src=src; f.style.width=W+'px'; f.style.height=H+'px';
+function fit(){
+  var s=Math.min(innerWidth/(W+16), innerHeight/(H+16), 1);
+  var w=document.getElementById('wrap');
+  w.style.transform='scale('+s+')';
+  w.style.left="0px";
+  w.style.top="0px";
+  document.body.style.background='#22262a';
+}
+addEventListener('resize',fit); fit();
+</script></body></html>

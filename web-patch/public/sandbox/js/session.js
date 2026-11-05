@@ -185,6 +185,17 @@ export const session = Object.freeze({
     if (unit) engine.hand?.prepare(unit);
     return unit;
   },
+  /**
+   * 局内换一个干员带的技能（用户要求「局内也可以切换技能」）。
+   *
+   * 引擎的技能是建场时按 loadout 装配好的，换技能要连 content 里的定义和 skill 状态一起重建，
+   * 所以这一步必须走门面（门面外不许碰 `battle.`）。返回 true 表示换上了：
+   * 还没部署的单位立刻生效，已部署的要撤退重放才吃到新技能。
+   */
+  switchSkill: (unit, skillIndex) => !!engine?.switchOperatorSkill?.(unit, skillIndex),
+  /** 局内换形态（阿米娅升变）。真实现与换技能同构，在 aue/battle.js 的 switchPersona。 */
+  // 返回 false | 'moved'（已原地重放）| 'bench'（原地放不下，退回手牌）
+  switchPersona: (unit, chessId) => engine?.switchPersona?.(unit, chessId) ?? false,
   /** 把一个已经造好的单位落到场上。 */
   deployUnit: (unit) => !!engine?._deploy?.(unit),
   /** 撤退一个单位。 */

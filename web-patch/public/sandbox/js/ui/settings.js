@@ -26,7 +26,7 @@ export function openSettings({ settings, onChange, onClose, global = false }) {
     ${global ? assetSectionHtml(readAssetState()) : ''}
     ${global ? '' : `<section><h3>快捷键</h3>${keys()}<p class="settings__hint">点一下右边再按任意键即可改绑；Esc 取消。步进一帧：没暂停会先暂停。技能与撤退作用于鼠标所指的干员。</p></section>`}</div>
     ${global ? `<section class="settings__help"><h3>教程与帮助</h3>
-      <p class="settings__hint">首次上手的流程、沙盒与编辑器的操作、干员数值怎么改、读取方舟资源需要什么，都在一页里。</p>
+      <p class="settings__hint">首次上手的流程、沙盒与编辑器的操作、干员详情怎么改、读取方舟资源需要什么，都在一页里。</p>
       <div class="settings__assets-actions">
         <button type="button" class="menu__button menu__button--primary" data-help-open>打开教程与帮助</button>
         <span class="settings__assets-size" data-help-seen></span>

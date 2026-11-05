@@ -1,0 +1,712 @@
+/* ==========================================================================================
+ * 游玩自制关卡 / 关卡制作器 / 教程帮助 —— 统一成自由沙盒那套浅色扁平
+ *
+ * 为什么单独一个文件、并且在页面最后引入：
+ *   这三个页面各自还挂着 studio.css / game.css / game-panels.css / theme.css 里的深色主题，
+ *   那些规则的设计基准是战斗界面（深底金字），在列表类页面里会把白卡压成黑卡。
+ *   本文件最后加载，不需要靠 !important 打架，也不会影响沙盒与战斗。
+ * ========================================================================================== */
+
+html.play-doc,
+html.level-doc,
+html.help-doc {
+  background: #e9ebeb !important;
+  color-scheme: light;
+}
+html.play-doc body,
+html.level-doc body,
+html.help-doc body {
+  background: #e9ebeb !important;
+  color: #22282a !important;
+}
+
+/* 顶部终端条：白底细线，选中项用青色 */
+html.play-doc .terminal-chrome,
+html.level-doc .terminal-chrome,
+html.help-doc .terminal-chrome { color: #59636a !important; }
+html.play-doc .terminal-header,
+html.level-doc .terminal-header,
+html.help-doc .terminal-header {
+  background: #fff !important;
+  border-bottom: 1px solid #dfe4e5 !important;
+  box-shadow: none !important;
+}
+html.play-doc .terminal-tab,
+html.level-doc .terminal-tab,
+html.help-doc .terminal-tab {
+  background: #fff !important;
+  color: #59636a !important;
+  border: 1px solid #dfe4e5 !important;
+  border-radius: 2px !important;
+}
+html.play-doc .terminal-tab.is-active,
+html.level-doc .terminal-tab.is-active,
+html.help-doc .terminal-tab.is-active {
+  background: #00a2c8 !important;
+  border-color: #00a2c8 !important;
+  color: #fff !important;
+}
+html.play-doc [data-terminal-back],
+html.level-doc [data-terminal-back],
+html.help-doc [data-terminal-back] {
+  background: #fff !important;
+  color: #22282a !important;
+  border: 1px solid #d5dbdd !important;
+}
+
+/* 底部两个浮动开关 */
+html.play-doc .terminal-options button,
+html.level-doc .terminal-options button,
+html.help-doc .terminal-options button {
+  background: #fff !important;
+  color: #22282a !important;
+  border: 1px solid #d5dbdd !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%) !important;
+}
+
+/* 正文：白卡 + 深字 + 青色主按钮 */
+html.play-doc h1, html.level-doc h1, html.help-doc h1,
+html.play-doc h2, html.level-doc h2, html.help-doc h2,
+html.play-doc h3, html.level-doc h3, html.help-doc h3,
+html.play-doc strong, html.level-doc strong { color: #22282a !important; }
+html.play-doc p, html.play-doc li, html.play-doc small,
+html.level-doc p, html.level-doc li, html.level-doc small,
+html.help-doc p, html.help-doc li { color: #59636a !important; }
+
+html.play-doc .menu__button,
+html.play-doc .lv-btn,
+html.level-doc .menu__button {
+  background: #fff !important;
+  color: #22282a !important;
+  border: 1px solid #d5dbdd !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+html.play-doc .menu__button--pri,
+html.play-doc .menu__button.is-primary,
+html.level-doc .menu__button--pri {
+  background: #00a2c8 !important;
+  border-color: #00a2c8 !important;
+  color: #fff !important;
+}
+
+/* 关卡 / 作战卡片 */
+html.play-doc .card,
+html.play-doc .ops__item,
+html.play-doc .lv-card,
+html.level-doc .card,
+html.level-doc .lv-card {
+  background: #fff !important;
+  border: 1px solid #dfe4e5 !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+/* 关卡页的深底来自 .lv 自己的 background: var(--bg)，只改 body 盖不住 */
+html.level-doc body.lv,
+html.level-doc .lv {
+  --bg: #e9ebeb;
+  --fg: #22282a;
+  background: #e9ebeb !important;
+  color: #22282a !important;
+}
+html.level-doc #level,
+html.level-doc .lv-main,
+html.level-doc .lv-body {
+  background: #e9ebeb !important;
+  color: #22282a !important;
+}
+html.level-doc .lv-head { background: #fff !important; border-bottom: 1px solid #dfe4e5 !important; }
+html.level-doc .lv-title,
+html.level-doc .lv-h1 { color: #22282a !important; }
+html.level-doc .lv-card,
+html.level-doc .lv-panel {
+  background: #fff !important;
+  border: 1px solid #dfe4e5 !important;
+  color: #22282a !important;
+}
+
+/* 关卡库列表：黑条来自 .lv-row / .lv-card 的深色底，逐块压成白卡 */
+html.level-doc .lv-stage,
+html.level-doc .lv-list,
+html.level-doc .lv-row,
+html.level-doc .lv-card,
+html.level-doc .lv-card__main,
+html.level-doc .lv-pagination,
+html.level-doc .lv-head,
+html.level-doc .lv-body { background: #fff !important; color: #22282a !important; }
+html.level-doc .lv-list { border: 1px solid #dfe4e5 !important; border-radius: 2px; }
+html.level-doc .lv-row { border-bottom: 1px solid #eef1f2 !important; }
+html.level-doc .lv-card__name { color: #22282a !important; font-weight: 600; }
+html.level-doc .lv-card__meta,
+html.level-doc .lv-hint,
+html.level-doc .lv-note-preview { color: #7c878d !important; }
+html.level-doc .lv-empty { color: #7c878d !important; }
+/* 顶部大标题被固定顶栏压住：给主体留出顶栏高度 */
+html.level-doc .lv { padding-top: 52px !important; box-sizing: border-box; }
+html.level-doc .lv-title,
+html.level-doc .lv-h1 { margin-top: 0 !important; }
+
+/* ── 关卡库：卡片竖排 + 按钮自成一行，别再挤在一起 ───────────────────── */
+html.level-doc .lv-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-auto-flow: row !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+}
+html.level-doc .lv-card__main {
+  display: grid !important;
+  grid-template-columns: 56px minmax(0, 1fr) !important;
+  grid-template-areas: "preview name" "preview meta" !important;
+  align-items: center !important;
+  gap: 2px 10px !important;
+  min-width: 0 !important;
+}
+html.level-doc .lv-card__preview {
+  grid-area: preview !important;
+  width: 56px !important;
+  height: 56px !important;
+  object-fit: cover !important;
+  border-radius: 2px;
+  border: 1px solid #dfe4e5;
+}
+html.level-doc .lv-card__name { grid-area: name !important; }
+html.level-doc .lv-card__meta { grid-area: meta !important; }
+html.level-doc .lv-card__ops {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  width: 100% !important;
+}
+html.level-doc .lv-card__ops .lv-btn { width: 100% !important; padding: 8px 4px !important; font-size: 12.5px !important; }
+
+/* 翻页条单独一行，不再压在卡片上 */
+html.level-doc .lv-pagination {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin: 10px 0 0 !important;
+  padding: 8px 0 !important;
+  background: transparent !important;
+}
+html.level-doc .lv-pagination span { color: #59636a !important; font-size: 12px; }
+
+/* 标题不再被顶栏压：.lv-head 自己就是白条，给正文留出 52px */
+html.level-doc .lv-head {
+  position: relative !important;
+  height: 46px !important;
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+html.level-doc .lv-head h1 { font-size: 15px !important; }
+html.level-doc .lv-body { padding: 12px !important; }
+html.level-doc .lv-actions { display: flex !important; gap: 8px !important; margin: 0 0 12px !important; }
+
+/* 关卡库列表被 level.css:221 压成「固定列数 × 固定行数」的网格，
+   手机上每格只有几十像素高，卡片内容自然叠在一起。这里强制单列纵向排列。 */
+html.level-doc .lv-list {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+html.level-doc .lv-card { min-height: 0 !important; height: auto !important; }
+
+/* ---------------------------------------------------------------- 顶栏让位
+   sandbox/menu.css:467 把 .page__topbar 设成 position:fixed 钉在左上，
+   而页面正文从 y=0 开始 → 「← 返回主菜单」正好压在大标题上。
+   这里给三个页面留一条与顶栏等高的顶部留白，并让内容区自己带内边距。 */
+html.help-doc .help,
+html.play-doc .play,
+html.level-doc .lv {
+  padding-top: 56px !important;
+}
+html.ark-doc .page__topbar {
+  padding: 0 !important;
+}
+html.ark-doc .page__topbar .page__back {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #c9d0d2;
+  border-radius: 2px;
+  background: #fff;
+  color: #22282a;
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+html.ark-doc .page__topbar .page__back:hover { border-color: #00a2c8; color: #0086a8; }
+
+
+/* ==========================================================================================
+ * 手机横屏：顶栏压扁 + 关卡库整页滚动
+ *
+ * 三个页面的视口在手机横屏只有 800x330 上下，而 sandbox/menu-layout.css:35 那条
+ * `:root[data-menu-theme] body:not([data-terminal-mode='battle']) .terminal-chrome .terminal-header`
+ * 把顶栏写死成 height:100px（特异性 (0,5,1)），一个顶栏就吃掉三成屏幕；
+ * 同一份文件里 `body[data-terminal-mode='menu'] :is(...,.lv-workspace--library .lv-btn)`
+ * 又把关卡库按钮撑到 min-height:56px，卡片里塞不下就叠成一坨。
+ * 这里统一压回去，作用域只到这三个页面。
+ * ========================================================================================== */
+html.play-doc .terminal-chrome .terminal-header,
+html.level-doc .terminal-chrome .terminal-header,
+html.help-doc .terminal-chrome .terminal-header {
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 10px !important;
+  gap: 8px !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+html.play-doc .terminal-chrome .terminal-history,
+html.level-doc .terminal-chrome .terminal-history,
+html.help-doc .terminal-chrome .terminal-history {
+  padding-top: 0 !important;
+  min-width: 0 !important;
+  gap: 6px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+}
+html.play-doc .terminal-chrome .terminal-history :is(a,button),
+html.level-doc .terminal-chrome .terminal-history :is(a,button),
+html.help-doc .terminal-chrome .terminal-history :is(a,button) {
+  height: 28px !important;
+  padding: 0 9px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+}
+html.play-doc .terminal-chrome .terminal-tabs,
+html.level-doc .terminal-chrome .terminal-tabs,
+html.help-doc .terminal-chrome .terminal-tabs {
+  gap: 4px !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  height: 100% !important;
+}
+html.play-doc .terminal-chrome .terminal-tab,
+html.level-doc .terminal-chrome .terminal-tab,
+html.help-doc .terminal-chrome .terminal-tab {
+  width: auto !important;
+  height: 30px !important;
+  min-height: 0 !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  border: 1px solid #dfe4e5 !important;
+  border-radius: 2px !important;
+  background: #fff !important;
+  color: #59636a !important;
+  white-space: nowrap !important;
+  transform: none !important;
+}
+html.play-doc .terminal-chrome .terminal-tab.is-current,
+html.level-doc .terminal-chrome .terminal-tab.is-current,
+html.help-doc .terminal-chrome .terminal-tab.is-current,
+html.play-doc .terminal-chrome .terminal-tab[aria-current="page"],
+html.level-doc .terminal-chrome .terminal-tab[aria-current="page"],
+html.help-doc .terminal-chrome .terminal-tab[aria-current="page"] {
+  height: 30px !important;
+  background: #00a2c8 !important;
+  border-color: #00a2c8 !important;
+  color: #fff !important;
+}
+html.play-doc .terminal-chrome .terminal-tab svg,
+html.level-doc .terminal-chrome .terminal-tab svg,
+html.help-doc .terminal-chrome .terminal-tab svg { width: 14px !important; height: 14px !important; }
+html.play-doc .terminal-chrome .terminal-header__end,
+html.level-doc .terminal-chrome .terminal-header__end,
+html.help-doc .terminal-chrome .terminal-header__end { display: none !important; }
+
+/* 右下两个浮动开关：缩小，别压住列表 */
+html.play-doc .terminal-options,
+html.level-doc .terminal-options,
+html.help-doc .terminal-options { right: 8px !important; bottom: 8px !important; gap: 6px !important; }
+html.play-doc .terminal-options button,
+html.level-doc .terminal-options button,
+html.help-doc .terminal-options button {
+  min-height: 0 !important;
+  height: 30px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  border-radius: 2px !important;
+}
+
+/* 正文给压扁后的顶栏让位（44 + 4） */
+html.play-doc .play,
+html.help-doc .help,
+html.level-doc .lv { padding-top: 48px !important; }
+
+/* ── 关卡制作器：整页滚动，别再让「固定行高网格」把卡片压扁 ────────────────
+ * level.css:174 的 .lv-workspace 是 position:absolute;top:0;overflow:hidden，
+ * 所以 body 上的 padding-top 完全无效（它压根不在流里），而且
+ * level.css:176 的 grid-template-rows:auto minmax(0,1fr) 会把列表挤到剩下的几十像素。
+ * 改成普通流 + 内容撑高，整页滚动。 */
+/* 真正的拦路虎在 css/ark-pages.css:466：
+   `html.level-doc, html.level-doc body.studio.lv { height:100%; min-height:0; overflow:hidden }`
+   —— 根元素自己就 overflow:hidden，下面怎么改都滚不动。要连 html 一起放开。 */
+html.level-doc {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+html.level-doc body.studio.lv,
+html.level-doc body.lv {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow: visible !important;
+}
+/* ark-pages.css:467 的 #level 也是 height:100% + flex 列，一样改成自然高 */
+html.level-doc #level {
+  height: auto !important;
+  min-height: 0 !important;
+  display: block !important;
+}
+html.level-doc #level > .lv-body { flex: none !important; }
+html.level-doc .lv-workspace {
+  position: static !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  display: block !important;
+}
+html.level-doc .lv-workspace--library { display: block !important; }
+html.level-doc .lv-body {
+  display: block !important;
+  grid-template-rows: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+}
+/* 按钮高度：menu-layout.css:53 那条
+   `:root[data-menu-theme] body[data-terminal-mode='menu'] :is(...,.lv-workspace--library .lv-btn)`
+   特异性是 (0,5,1) 且给了 min-height:42px / primary 56px，卡片里的四个按钮因此高得离谱。
+   这里要凑到同样的 (0,5,1) 才有资格赢，靠的是本文件最后加载。 */
+html.level-doc body[data-terminal-mode='menu'] .lv-workspace--library .lv-card__ops .lv-btn,
+html.level-doc .lv-card__ops .lv-btn {
+  min-height: 30px !important;
+  height: 30px !important;
+  padding: 0 4px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  clip-path: none !important;
+  background: #fff !important;
+  border: 1px solid #c9d0d2 !important;
+  color: #22282a !important;
+}
+html.level-doc body[data-terminal-mode='menu'] .lv-workspace--library .lv-card__ops .lv-btn--pri,
+html.level-doc .lv-card__ops .lv-btn--pri {
+  background: #00a2c8 !important;
+  border-color: #00a2c8 !important;
+  color: #fff !important;
+}
+html.level-doc body[data-terminal-mode='menu'] .lv-workspace--library .lv-card__ops .lv-btn--red,
+html.level-doc .lv-card__ops .lv-btn--red {
+  background: #fff !important;
+  border-color: #e2392c !important;
+  color: #c8302a !important;
+}
+html.level-doc .lv-actions .lv-btn {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 0 14px !important;
+  font-size: 12.5px !important;
+  clip-path: none !important;
+}
+
+/* 「音乐 开 / 全局设置」这两个浮动开关（terminal-shell.js 注入的 .terminal-options，
+   menu-layout.css 把右下角固定）原本 40px 高，横屏时正好盖住关卡卡的「删除」。
+   压到 26px，并让关卡库底部留出足够空白，滚到底也不会被压住。 */
+html.level-doc .terminal-options,
+html.play-doc .terminal-options,
+html.help-doc .terminal-options {
+  right: 8px !important;
+  bottom: 6px !important;
+  gap: 6px !important;
+  z-index: 40 !important;
+}
+html.level-doc .terminal-options button,
+html.play-doc .terminal-options button,
+html.help-doc .terminal-options button {
+  min-height: 0 !important;
+  height: 26px !important;
+  padding: 0 9px !important;
+  font-size: 11.5px !important;
+  line-height: 1 !important;
+  opacity: .92;
+}
+html.level-doc .lv-body { padding-bottom: 46px !important; }
+
+/* 按钮之间那几条深灰竖线：.lv-card__ops 是 grid + gap，gap 里露出的是它自己（或 .lv-card）
+   的背景，而 level.css / menu-theme 那边给的是深色底。这里把两层都钉成白色，
+   再用 inset 阴影替代 border，杜绝相邻边框叠成黑线。 */
+html.level-doc .lv-card,
+html.level-doc .lv-card__main,
+html.level-doc .lv-card__ops {
+  background: #fff !important;
+}
+html.level-doc .lv-card { border: 1px solid #dfe4e5 !important; }
+html.level-doc .lv-card__ops { gap: 8px !important; }
+html.level-doc .lv-card__ops .lv-btn {
+  border: 0 !important;
+  box-shadow: inset 0 0 0 1px #c9d0d2 !important;
+  background: #fff !important;
+  color: #22282a !important;
+}
+html.level-doc .lv-workspace--library .lv-card__ops .lv-btn--pri {
+  background: #00a2c8 !important;
+  box-shadow: inset 0 0 0 1px #00a2c8 !important;
+  color: #fff !important;
+}
+html.level-doc .lv-workspace--library .lv-card__ops .lv-btn--red {
+  background: #fff !important;
+  box-shadow: inset 0 0 0 1px #e2392c !important;
+  color: #c8302a !important;
+}
+/* 卡片底部大片灰：body 背景从 #e9ebeb 透出来没问题，但 lv-body 之前是深色底，一并刷白灰 */
+html.level-doc #level,
+html.level-doc .lv-workspace,
+html.level-doc .lv-body {
+  background: #e9ebeb !important;
+}
+html.level-doc .lv-head { background: #fff !important; }
+
+/* ==========================================================================================
+ * 游玩自制关卡（play.html）：整页从深底金字改成自由沙盒那套浅色扁平
+ *
+ * 这页原样式在 play/play.css:4-30 与 css/screens/game.css 里，基准是战斗界面：
+ *   .operation-head  background:#141c21e8   → 顶部一条近黑
+ *   .operation-level background:#1d272d      → 关卡卡黑底
+ *   .operation-level-detail background:#151e24 → 右侧情报栏黑底
+ *   .op-eyebrow     color:#caa25f            → 金字
+ * 单靠改一两处没用，整套一起刷白。
+ * ========================================================================================== */
+html.play-doc body,
+html.play-doc #app,
+html.play-doc .operation-screen,
+html.play-doc .operation-levels { background: #e9ebeb !important; color: #22282a !important; }
+
+html.play-doc .operation-head {
+  background: #fff !important;
+  border-bottom: 1px solid #dfe4e5 !important;
+  padding: 10px 14px !important;
+  gap: 12px !important;
+}
+html.play-doc .operation-head h1 {
+  font-size: 17px !important;
+  color: #22282a !important;
+  max-width: none !important;
+}
+html.play-doc .operation-head a { color: #0086a8 !important; }
+html.play-doc .op-eyebrow { color: #8b9599 !important; font-size: 11px !important; letter-spacing: .06em !important; }
+
+/* 关卡网格 */
+html.play-doc .operation-level-grid {
+  padding: 12px !important;
+  gap: 10px !important;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+  grid-auto-rows: auto !important;
+}
+html.play-doc .operation-level {
+  background: #fff !important;
+  border: 1px solid #dfe4e5 !important;
+  border-radius: 2px !important;
+  color: #22282a !important;
+  box-shadow: none !important;
+}
+html.play-doc .operation-level:hover,
+html.play-doc .operation-level.is-on {
+  border-color: #00a2c8 !important;
+  box-shadow: inset 0 0 0 1px #00a2c8 !important;
+}
+html.play-doc .operation-level img { height: 120px !important; background: #f2f4f4 !important; }
+html.play-doc .operation-level span { padding: 8px 10px !important; }
+html.play-doc .operation-level b { color: #22282a !important; font-size: 13px !important; }
+html.play-doc .operation-level small { color: #7c878d !important; font-size: 11.5px !important; }
+html.play-doc .operation-stars { color: #c9a227 !important; }
+
+/* 右侧情报栏 */
+html.play-doc .operation-level-detail {
+  background: #fff !important;
+  border-left: 1px solid #dfe4e5 !important;
+  color: #22282a !important;
+  padding: 16px !important;
+  gap: 10px !important;
+}
+html.play-doc .operation-level-detail h2 { color: #22282a !important; font-size: 19px !important; }
+html.play-doc .operation-level-detail p { color: #59636a !important; font-size: 12.5px !important; }
+html.play-doc .op-dim { color: #8b9599 !important; }
+html.play-doc .operation-briefing-map { border: 1px solid #dfe4e5 !important; border-radius: 2px; background: #f2f4f4 !important; }
+html.play-doc .operation-briefing-summary div { color: #59636a !important; }
+html.play-doc .operation-briefing-summary b { color: #22282a !important; }
+html.play-doc .op-tags span {
+  background: #f2f4f4 !important;
+  border: 1px solid #dfe4e5 !important;
+  color: #59636a !important;
+  border-radius: 2px !important;
+}
+html.play-doc .operation-empty { color: #7c878d !important; }
+
+/* 未选关卡时的邀请卡 */
+html.play-doc .operation-level-invitation { color: #22282a !important; }
+html.play-doc .operation-level-invitation h2 { color: #22282a !important; }
+html.play-doc .operation-level-invitation p { color: #59636a !important; }
+html.play-doc .operation-level-invitation small { color: #8b9599 !important; }
+html.play-doc .operation-invitation-index { color: #c9d0d2 !important; }
+
+/* 按钮：白底描边 / 主按钮青色（menu-layout.css 那条 56px 也要按下去） */
+html.play-doc body[data-terminal-mode='menu'] .op-button,
+html.play-doc .op-button {
+  min-height: 32px !important;
+  height: auto !important;
+  padding: 7px 14px !important;
+  font-size: 12.5px !important;
+  line-height: 1.2 !important;
+  border-radius: 2px !important;
+  border: 1px solid #c9d0d2 !important;
+  background: #fff !important;
+  color: #22282a !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+}
+html.play-doc body[data-terminal-mode='menu'] .op-button--primary,
+html.play-doc .op-button--primary {
+  background: #00a2c8 !important;
+  border-color: #00a2c8 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+html.play-doc .op-status { color: #c8302a !important; font-size: 12px !important; }
+
+/* 手机横屏：情报栏别再挤成 320px 黑条，改成上下布局 */
+@media (max-width: 900px), (orientation: landscape) and (max-height: 500px) {
+  html.play-doc .operation-levels {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    display: block !important;
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+  html.play-doc .operation-level-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  html.play-doc .operation-level-detail {
+    border-left: 0 !important;
+    border-top: 1px solid #dfe4e5 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+}
+
+/* 游玩页滚不动 / 下方大片空白的根因：
+ *   play/play.css:2  `.operation-screen { position: fixed; inset: 0; display:flex; flex-direction:column }`
+ *   —— 它脱离文档流、高度锁死在视口，内部 .operation-levels 又是
+ *   `grid-template-rows: minmax(0,1fr)`，内容一多只会在里面挤，页面本身不滚。
+ *   而 html/body 还带着 theme.css:151 的 `height:100%; overflow:hidden`。
+ *   这里把整条链改成自然流：html 可滚、screen 静态、levels 块级。 */
+html.play-doc {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+html.play-doc body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow: visible !important;
+}
+html.play-doc .operation-screen {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: block !important;
+  background: #e9ebeb !important;
+  color: #22282a !important;
+  font: 13px/1.5 system-ui, 'Microsoft YaHei', sans-serif !important;
+}
+html.play-doc .operation-levels {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+html.play-doc .operation-level-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
+  grid-auto-rows: auto !important;
+  align-content: start !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+html.play-doc .operation-level-detail {
+  border-left: 0 !important;
+  border-top: 1px solid #dfe4e5 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 14px !important;
+}
+/* 输入框 / 弹层也跟着刷白，否则深底输入框在浅页面上像挖了个洞 */
+html.play-doc .operation-screen input,
+html.play-doc .operation-screen select,
+html.play-doc .operation-screen textarea,
+html.play-doc .operation-dialog {
+  background: #fff !important;
+  color: #22282a !important;
+  border-color: #c9d0d2 !important;
+}
+
+/* 「干员数值已被修改」黄条（terminal-shell.js 注入的 .terminal-editbar）压在导航条上，
+   横屏时正好盖住标签。钉到导航条右侧的空位里，缩成一行小字。 */
+html.play-doc .terminal-editbar,
+html.level-doc .terminal-editbar,
+html.help-doc .terminal-editbar {
+  position: fixed !important;
+  left: 10px !important;
+  top: 50px !important;
+  transform: none !important;
+  width: auto !important;
+  max-width: calc(100vw - 20px) !important;
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  border-radius: 2px !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  z-index: 120 !important;
+}
+html.play-doc .terminal-editbar b,
+html.level-doc .terminal-editbar b { font-size: 11px !important; }
+html.play-doc .terminal-editbar span,
+html.level-doc .terminal-editbar span {
+  font-size: 11px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}

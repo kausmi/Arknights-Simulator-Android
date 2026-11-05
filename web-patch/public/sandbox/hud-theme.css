@@ -357,7 +357,17 @@ body[data-workspace='level'] .hand--tight .ocard { width: clamp(42px, calc((100v
 .sb .dt__text-note { color: #ffb512; }
 .sb .dt__text-effect { color: inherit; }
 .sb .dt__actions { flex: none; width: 100%; position: relative; padding: 8px 0 0; }
-.sb .hud:has(.hud__detail.is-on) .hud__drawer { visibility: hidden; pointer-events: none; }
+/* 「详情面板 vs 左侧工具箱」谁让位（2026-11-04 修「放置敌人看不见也选不了敌人」）
+   旧规则写反了方向：
+       .sb .hud:has(.hud__detail.is-on) .hud__drawer { visibility: hidden; pointer-events: none; }
+   只要场上有选中单位（点过任意一个干员或敌人），整条左侧工具箱就被 visibility:hidden ——
+   它既看不见、也 point-events:none 点不到，于是「刷敌人」页签彻底失效，用户只能刷新页面。
+   正确方向：**抽屉展开时让位的是左下详情面板**，而不是抽屉。
+   注意 specificity：.hud:has(.hud__detail.is-on) 与 .hud:has(.hud__drawer.is-open) 同为 0,4,0，
+   替换后不存在「两条互斥规则同时命中」的歧义。 */
+.sb .hud:has(.hud__drawer.is-open) .hud__detail { visibility: hidden; pointer-events: none; }
+/* 技能 / 撤退键被搬到 fixed 浮层 #selection-actions 里，抽屉展开时它们仍会悬在屏幕上，一起收起 */
+.sb .hud:has(.hud__drawer.is-open) .selection-actions { display: none; }
 .sb .selection-actions { position: fixed; width: 0; height: 0; z-index: 12; pointer-events: none; }
 .sb .selection-actions[hidden] { display: none; }
 .sb .selection-actions::before { content: none; }

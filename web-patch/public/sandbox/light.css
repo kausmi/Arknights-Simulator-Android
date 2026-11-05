@@ -1,0 +1,386 @@
+/* ============================================================================
+ * 浅色扁平科技风 —— 全站公用底色与基础 token（0.1.16）
+ *
+ * 背景：主界面（home.html）、干员详情（operators.html）、帮助（help.html）、
+ * 以及沙盒的「模式选择 / 存档选择」界面，都已经改成明日方舟游戏内日间主界面
+ * 那套语言 —— 浅灰白底、白色直角块、青色强调、细线分隔。
+ * 本文件把那套配色抽成一份公用 token，并解决一个具体 bug：
+ *
+ *   【往下滑会露出一大块黑屏】
+ *   theme.css 里 `html { background: var(--bg-0) }`（#0c0f0e，深色），
+ *   而 body 是 `height:100%; overflow:auto`。帮助页 / 模式选择页的 body 只有一屏高，
+ *   内容比一屏长时滚动的是文档，body 之外那块就露出 html 的深色底 ——
+ *   在浅色页面上看起来就是「往下一滑一大块黑屏」。
+ *   所以这里把 html 的底色也换成浅色，而不是只改 body。
+ *
+ * 为什么用 html.<x>-doc 这个类而不是直接给 html 上色：
+ *   沙盒战斗界面（console.html 进沙盒之后）、关卡编辑器（level.html）、
+ *   游玩界面（play.html）仍然是深色作战界面，按用户要求**不跟着换**。
+ *   只有显式带 -doc 类的文档才吃这套底色。
+ *
+ *   console.html 是特例：它既是「模式选择页」也是「战斗页」，所以给它的 html
+ *   带 `sb-doc sb-pick` 两个类 —— `sb-pick` 只在模式选择阶段存在，进战斗时由
+ *   map-picker.js 摘掉（见文件末尾那段）。这样同一个文档能在两套外观之间切。
+ *
+ * 硬规矩：尺寸一律 px / clamp(vw,vh)，不写 rem
+ *   —— 本项目 1rem 在手机横屏只有 33px，用 rem 写控件会大得离谱。
+ * ========================================================================== */
+
+/* ---- 0. 公用浅色 token --------------------------------------------------- */
+:root {
+  --lt-bg: #e9ebeb;
+  --lt-bg-2: #dfe2e2;
+  --lt-tile: #fafbfb;
+  --lt-tile-2: #f1f3f3;
+  --lt-inset: #eceeee;
+  --lt-line: #c9cfd0;
+  --lt-line-2: #aab2b4;
+  --lt-ink: #1b1e20;
+  --lt-ink-2: #4c5457;
+  --lt-ink-3: #7b8386;
+  --lt-ink-4: #9aa2a4;
+  --lt-cyan: #00a2c8;
+  --lt-cyan-deep: #0089ad;
+  --lt-cyan-soft: #e3f4f8;
+  --lt-gold: #b5771f;
+  --lt-gold-soft: #fbf1de;
+  --lt-orange: #e8611a;
+  --lt-red: #d32027;
+  --lt-red-soft: #fbe9e7;
+  --lt-ok: #1e7d5c;
+  --lt-ok-soft: #e4f4ee;
+  --lt-radius: 2px;
+}
+
+/* ---- 1. 文档底色（修「往下滑一大块黑屏」） -------------------------------- */
+html.hs-doc,
+html.ops-doc,
+html.help-doc,
+html.sb-doc.sb-pick {
+  background: var(--lt-bg);
+  color-scheme: light;
+  overscroll-behavior-y: none;
+}
+
+/* 兜底：万一某个 -doc 页面的 body 也漏了浅色底，至少不让深色从缝里露出来。
+   console 的 body 是 .studio.sb（sandbox.css 里写死 #05070a），必须单独压一层。 */
+html.hs-doc body,
+html.ops-doc body,
+html.help-doc body,
+html.sb-doc.sb-pick body,
+html.sb-doc.sb-pick body.sb {
+  background-color: var(--lt-bg);
+}
+
+/* 进战斗后 body.sb 恢复深色（这里显式写一遍，免得上面的规则在摘掉 sb-pick 后
+   还残留 —— 其实摘掉就天然失效了，这条只是把意图写在纸面上）。 */
+html.sb-doc:not(.sb-pick) body.sb { background-color: #05070a; }
+
+/* ---- 2. 公用小件 --------------------------------------------------------- */
+/* 等宽小字标签（eyebrow / 编号 / 单位后缀）。主界面与干员页各有一份同源实现，
+   新页面（帮助、模式选择）直接用这个类，别再各写一遍。 */
+.lt-eyebrow {
+  font: 500 9.5px/1.5 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--lt-ink-3);
+}
+
+/* 白色直角块：整站唯一的「卡片」形态 —— 无阴影、无圆角、1px 细线。 */
+.lt-card {
+  background: var(--lt-tile);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius);
+}
+
+/* 强调细线（青色），用在标题下沿、进度条上 */
+.lt-rule { height: 2px; background: var(--lt-cyan); border: 0; margin: 0; }
+
+/* 顶部那条 fixed 的 ARKNIGHTS / SIMULATOR 细字在浅底上要换成中灰 */
+html.hs-doc .page__topbar,
+html.ops-doc .page__topbar,
+html.help-doc .page__topbar,
+html.sb-doc.sb-pick .page__topbar { color: var(--lt-ink-3); }
+
+/* 终端风的上升粒子在浅底上既看不见又糊在内容上，藏掉 */
+html.hs-doc .terminal-particles,
+html.ops-doc .terminal-particles,
+html.help-doc .terminal-particles,
+html.sb-doc.sb-pick .terminal-particles { display: none; }
+
+/* 右上角音乐 / 设置两个圆形按钮：浅底上要换成白底深字 */
+html.hs-doc .terminal-options button,
+html.hs-doc .terminal-options a,
+html.ops-doc .terminal-options button,
+html.ops-doc .terminal-options a,
+html.help-doc .terminal-options button,
+html.help-doc .terminal-options a,
+html.sb-doc.sb-pick .terminal-options button,
+html.sb-doc.sb-pick .terminal-options a {
+  color: var(--lt-ink-2);
+  border-color: var(--lt-line);
+  background: var(--lt-tile);
+}
+
+/* 滚动条：浅底上默认的深灰滑块很脏 */
+html.hs-doc ::-webkit-scrollbar-thumb,
+html.ops-doc ::-webkit-scrollbar-thumb,
+html.help-doc ::-webkit-scrollbar-thumb,
+html.sb-doc.sb-pick ::-webkit-scrollbar-thumb { background: var(--lt-line-2); }
+
+/* ---- 3. 模式选择页的统一入口抬头 ----------------------------------------- */
+/* console.html 的 .sandbox-entry 里没有 h1 之外的品牌元素（DOM 由 save-manager.js
+   生成，不能改），所以抬头靠这里补一条青色细线，跟主界面的方块呼应。 */
+html.sb-doc.sb-pick .sandbox-entry.sandbox-entry {
+  padding-top: calc(52px + var(--sa-t, 0px));
+}
+
+
+/* ============================================================================
+ * 设置弹层（.saves.sandbox-settings）浅色化
+ *
+ * sandbox/menu.css:106 的 .saves 是深色弹层（线性渐变 #25292d→#14171a + 金边），
+ * 在浅色页面上一打开就是一个黑洞。存档弹层用的是同一个基类，所以只按
+ * .sandbox-settings 收窄作用域，不动存档界面。
+ * ========================================================================== */
+html.hs-doc .saves.sandbox-settings,
+html.ops-doc .saves.sandbox-settings,
+html.help-doc .saves.sandbox-settings,
+html.sb-doc.sb-pick .saves.sandbox-settings,
+html.play-doc .saves.sandbox-settings,
+html.level-doc .saves.sandbox-settings {
+color: var(--lt-ink);
+  background: #fff;
+  border: 1px solid var(--lt-line);
+  border-top: 2px solid var(--lt-cyan);
+  border-radius: var(--lt-radius);
+  box-shadow: 0 20px 60px rgb(20 30 34 / 22%);
+}
+html.hs-doc .saves.sandbox-settings::backdrop,
+html.ops-doc .saves.sandbox-settings::backdrop,
+html.help-doc .saves.sandbox-settings::backdrop,
+html.sb-doc.sb-pick .saves.sandbox-settings::backdrop,
+html.play-doc .saves.sandbox-settings::backdrop,
+html.level-doc .saves.sandbox-settings::backdrop {
+background: rgb(24 32 35 / 42%);
+  backdrop-filter: blur(3px);
+}
+html.hs-doc .saves.sandbox-settings .saves__head,
+html.ops-doc .saves.sandbox-settings .saves__head,
+html.help-doc .saves.sandbox-settings .saves__head,
+html.sb-doc.sb-pick .saves.sandbox-settings .saves__head,
+html.play-doc .saves.sandbox-settings .saves__head,
+html.level-doc .saves.sandbox-settings .saves__head {
+padding-bottom: 10px;
+  border-bottom: 1px solid var(--lt-line);
+}
+html.hs-doc .saves.sandbox-settings .saves__head h2,
+html.ops-doc .saves.sandbox-settings .saves__head h2,
+html.help-doc .saves.sandbox-settings .saves__head h2,
+html.sb-doc.sb-pick .saves.sandbox-settings .saves__head h2,
+html.play-doc .saves.sandbox-settings .saves__head h2,
+html.level-doc .saves.sandbox-settings .saves__head h2 {
+color: var(--lt-ink);
+  font-size: 17px;
+  letter-spacing: 0;
+  margin: 0;
+}
+html.hs-doc .saves.sandbox-settings .settings__sections,
+html.ops-doc .saves.sandbox-settings .settings__sections,
+html.help-doc .saves.sandbox-settings .settings__sections,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__sections,
+html.play-doc .saves.sandbox-settings .settings__sections,
+html.level-doc .saves.sandbox-settings .settings__sections {
+gap: 16px;
+  margin-top: 14px;
+}
+html.hs-doc .saves.sandbox-settings .settings__sections h3,
+html.ops-doc .saves.sandbox-settings .settings__sections h3,
+html.help-doc .saves.sandbox-settings .settings__sections h3,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__sections h3,
+html.play-doc .saves.sandbox-settings .settings__sections h3,
+html.level-doc .saves.sandbox-settings .settings__sections h3 {
+color: var(--lt-ink);
+  font-size: 13px;
+  border-bottom: 1px solid var(--lt-line);
+  padding-bottom: 8px;
+}
+html.hs-doc .saves.sandbox-settings .settings__row,
+html.ops-doc .saves.sandbox-settings .settings__row,
+html.help-doc .saves.sandbox-settings .settings__row,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__row,
+html.play-doc .saves.sandbox-settings .settings__row,
+html.level-doc .saves.sandbox-settings .settings__row {
+min-height: 34px;
+  border-bottom: 1px solid #eef1f2;
+  color: var(--lt-ink-2);
+  font-size: 12.5px;
+}
+html.hs-doc .saves.sandbox-settings .settings__row > span,
+html.ops-doc .saves.sandbox-settings .settings__row > span,
+html.help-doc .saves.sandbox-settings .settings__row > span,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__row > span,
+html.play-doc .saves.sandbox-settings .settings__row > span,
+html.level-doc .saves.sandbox-settings .settings__row > span {
+color: var(--lt-ink-2);
+}
+html.hs-doc .saves.sandbox-settings .settings__row output,
+html.ops-doc .saves.sandbox-settings .settings__row output,
+html.help-doc .saves.sandbox-settings .settings__row output,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__row output,
+html.play-doc .saves.sandbox-settings .settings__row output,
+html.level-doc .saves.sandbox-settings .settings__row output {
+color: var(--lt-cyan-deep);
+}
+html.hs-doc .saves.sandbox-settings .settings__hint,
+html.ops-doc .saves.sandbox-settings .settings__hint,
+html.help-doc .saves.sandbox-settings .settings__hint,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__hint,
+html.play-doc .saves.sandbox-settings .settings__hint,
+html.level-doc .saves.sandbox-settings .settings__hint {
+color: var(--lt-ink-3);
+  font-size: 11.5px;
+}
+html.hs-doc .saves.sandbox-settings .saves__status,
+html.ops-doc .saves.sandbox-settings .saves__status,
+html.help-doc .saves.sandbox-settings .saves__status,
+html.sb-doc.sb-pick .saves.sandbox-settings .saves__status,
+html.play-doc .saves.sandbox-settings .saves__status,
+html.level-doc .saves.sandbox-settings .saves__status {
+color: var(--lt-ink-3);
+}
+html.hs-doc .saves.sandbox-settings select,
+html.ops-doc .saves.sandbox-settings select,
+html.help-doc .saves.sandbox-settings select,
+html.sb-doc.sb-pick .saves.sandbox-settings select,
+html.play-doc .saves.sandbox-settings select,
+html.level-doc .saves.sandbox-settings select,
+html.hs-doc .saves.sandbox-settings input,
+html.ops-doc .saves.sandbox-settings input,
+html.help-doc .saves.sandbox-settings input,
+html.sb-doc.sb-pick .saves.sandbox-settings input,
+html.play-doc .saves.sandbox-settings input,
+html.level-doc .saves.sandbox-settings input,
+html.hs-doc .saves.sandbox-settings textarea,
+html.ops-doc .saves.sandbox-settings textarea,
+html.help-doc .saves.sandbox-settings textarea,
+html.sb-doc.sb-pick .saves.sandbox-settings textarea,
+html.play-doc .saves.sandbox-settings textarea,
+html.level-doc .saves.sandbox-settings textarea {
+  background: #fff;
+  color: var(--lt-ink);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius);
+  color-scheme: light;
+  padding: 4px 8px;
+  font: inherit;
+}
+html.hs-doc .saves.sandbox-settings option,
+html.ops-doc .saves.sandbox-settings option,
+html.help-doc .saves.sandbox-settings option,
+html.sb-doc.sb-pick .saves.sandbox-settings option,
+html.play-doc .saves.sandbox-settings option,
+html.level-doc .saves.sandbox-settings option {
+  background: #fff;
+  color: var(--lt-ink);
+}
+html.hs-doc .saves.sandbox-settings input[type="checkbox"],
+html.ops-doc .saves.sandbox-settings input[type="checkbox"],
+html.help-doc .saves.sandbox-settings input[type="checkbox"],
+html.sb-doc.sb-pick .saves.sandbox-settings input[type="checkbox"],
+html.play-doc .saves.sandbox-settings input[type="checkbox"],
+html.level-doc .saves.sandbox-settings input[type="checkbox"] {
+accent-color: var(--lt-cyan);
+}
+html.hs-doc .saves.sandbox-settings input[type="range"],
+html.ops-doc .saves.sandbox-settings input[type="range"],
+html.help-doc .saves.sandbox-settings input[type="range"],
+html.sb-doc.sb-pick .saves.sandbox-settings input[type="range"],
+html.play-doc .saves.sandbox-settings input[type="range"],
+html.level-doc .saves.sandbox-settings input[type="range"] {
+accent-color: var(--lt-cyan);
+}
+html.hs-doc .saves.sandbox-settings .settings__theme,
+html.ops-doc .saves.sandbox-settings .settings__theme,
+html.help-doc .saves.sandbox-settings .settings__theme,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__theme,
+html.play-doc .saves.sandbox-settings .settings__theme,
+html.level-doc .saves.sandbox-settings .settings__theme {
+background: #fff;
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius);
+  color: var(--lt-ink);
+}
+html.hs-doc .saves.sandbox-settings .settings__theme strong,
+html.ops-doc .saves.sandbox-settings .settings__theme strong,
+html.help-doc .saves.sandbox-settings .settings__theme strong,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__theme strong,
+html.play-doc .saves.sandbox-settings .settings__theme strong,
+html.level-doc .saves.sandbox-settings .settings__theme strong {
+color: var(--lt-ink);
+}
+html.hs-doc .saves.sandbox-settings .settings__theme small,
+html.ops-doc .saves.sandbox-settings .settings__theme small,
+html.help-doc .saves.sandbox-settings .settings__theme small,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__theme small,
+html.play-doc .saves.sandbox-settings .settings__theme small,
+html.level-doc .saves.sandbox-settings .settings__theme small {
+color: var(--lt-ink-3);
+}
+html.hs-doc .saves.sandbox-settings .settings__theme:has(input:checked),
+html.ops-doc .saves.sandbox-settings .settings__theme:has(input:checked),
+html.help-doc .saves.sandbox-settings .settings__theme:has(input:checked),
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__theme:has(input:checked),
+html.play-doc .saves.sandbox-settings .settings__theme:has(input:checked),
+html.level-doc .saves.sandbox-settings .settings__theme:has(input:checked) {
+border-color: var(--lt-cyan);
+  background: var(--lt-cyan-soft);
+  box-shadow: inset 0 0 0 1px var(--lt-cyan);
+}
+html.hs-doc .saves.sandbox-settings .menu__button,
+html.ops-doc .saves.sandbox-settings .menu__button,
+html.help-doc .saves.sandbox-settings .menu__button,
+html.sb-doc.sb-pick .saves.sandbox-settings .menu__button,
+html.play-doc .saves.sandbox-settings .menu__button,
+html.level-doc .saves.sandbox-settings .menu__button {
+background: #fff;
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius);
+  color: var(--lt-ink);
+  box-shadow: none;
+  font-size: 12.5px;
+  padding: 6px 12px;
+  min-height: 0;
+}
+html.hs-doc .saves.sandbox-settings .menu__button:hover,
+html.ops-doc .saves.sandbox-settings .menu__button:hover,
+html.help-doc .saves.sandbox-settings .menu__button:hover,
+html.sb-doc.sb-pick .saves.sandbox-settings .menu__button:hover,
+html.play-doc .saves.sandbox-settings .menu__button:hover,
+html.level-doc .saves.sandbox-settings .menu__button:hover {
+background: var(--lt-tile-2);
+  border-color: var(--lt-cyan);
+  color: var(--lt-cyan-deep);
+}
+html.hs-doc .saves.sandbox-settings .menu__button--primary,
+html.ops-doc .saves.sandbox-settings .menu__button--primary,
+html.help-doc .saves.sandbox-settings .menu__button--primary,
+html.sb-doc.sb-pick .saves.sandbox-settings .menu__button--primary,
+html.play-doc .saves.sandbox-settings .menu__button--primary,
+html.level-doc .saves.sandbox-settings .menu__button--primary {
+background: var(--lt-cyan);
+  border-color: var(--lt-cyan);
+  color: #fff;
+  font-weight: 600;
+}
+html.hs-doc .saves.sandbox-settings .settings__key,
+html.ops-doc .saves.sandbox-settings .settings__key,
+html.help-doc .saves.sandbox-settings .settings__key,
+html.sb-doc.sb-pick .saves.sandbox-settings .settings__key,
+html.play-doc .saves.sandbox-settings .settings__key,
+html.level-doc .saves.sandbox-settings .settings__key {
+background: var(--lt-tile-2);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius);
+  color: var(--lt-ink);
+}

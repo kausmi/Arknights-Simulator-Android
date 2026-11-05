@@ -38,11 +38,17 @@ public final class Extractor {
     private final File runtime;   // <externalFiles>/rt  （含 py/ 与 extract/，shell 可读）
     private final File webDir;    // web 根（私有目录），最终产物与网页资源都在这里
 
-    /** shell 身份可执行的位置：/sdcard 是 FUSE noexec，只有这里能跑 ELF。 */
-    private static final File STAGE = new File("/data/local/tmp/arksim-rt");
+    /**
+     * 提权身份可执行的位置：/sdcard 是 FUSE noexec，只有 /data/local/tmp 能跑 ELF。
+     *
+     * <p>具体路径按提权通道区分（Shizuku 与 root 各用一个），见
+     * {@link ShizukuBridge#stagingRoot()}。这里在构造时定下来 —— 一次提取全程
+     * 用同一个身份，中途不会换通道。
+     */
+    private final File STAGE;
 
-    /** python 的写盘暂存（shell 暂存区，没有媒体扫描器会看这里）。 */
-    private static final File TMP_OUT = new File("/data/local/tmp/arksim-out");
+    /** python 的写盘暂存（提权身份的暂存区，没有媒体扫描器会看这里）。 */
+    private final File TMP_OUT;
 
     /**
      * 整条提取链路上是否顺带解全量皮肤。
@@ -70,6 +76,8 @@ public final class Extractor {
     public Extractor(File runtime, File webDir) {
         this.runtime = runtime;
         this.webDir = webDir;
+        this.STAGE = new File(ShizukuBridge.stagingRoot());
+        this.TMP_OUT = new File(ShizukuBridge.outputRoot());
     }
 
     public File assetsRoot() {
@@ -156,6 +164,16 @@ public final class Extractor {
                 "PATH=/system/bin:/system/xbin",
                 "PYTHONDONTWRITEBYTECODE=1",
         };
+
+        // 重跑提取前，先把上一轮落在 assets 下的旧产物清掉。
+        //
+        // 为什么必须清：mapEntry 只按「同名同大小」跳过文件，改过内容的文件不会覆盖；
+        // 更要命的是上一版脚本吐出的 .png 会一直躺在 assets/char/illust 里，
+        // 与这一版吐出的 .webp 同时存在，前端按 assets.json 的登记路径取哪张全看运气 ——
+        // 用户看到的就是「重新提取了还是旧图 / 诡异的旧色块」。
+        // 只清我们自己写的那几个目录，不碰用户上传的 custom 与发行包自带的图（下面会重新解）。
+        int purged = purgeOldArtifacts(cb);
+        if (purged > 0) cb.onLine("已清理上一轮的 " + purged + " 个旧产物");
 
         // 暂存先清空，保证这次 tar 回流的东西全是本次产物。
         runShell(new String[]{"sh", "-c", "rm -rf '" + TMP_OUT.getAbsolutePath() + "'"}, cb);
@@ -299,6 +317,54 @@ public final class Extractor {
         File parent = target.getParentFile();
         if (parent != null && !parent.isDirectory()) parent.mkdirs();
         return target;
+    }
+
+    /**
+     * 清掉上一轮提取写在 public/assets 下的产物（只删提取器管的目录）。
+     *
+     * <p>目录清单刻意收窄：{@code assets/local}、{@code assets/char}、{@code assets/skin}
+     * 三个都是提取器 / 皮肤脚本的输出位置；{@code assets/custom}（用户自上传）与
+     * {@code assets/prof}、{@code assets/skill} 是发行包自带资源，不在清理范围内。
+     *
+     * @return 删掉的文件数
+     */
+    private int purgeOldArtifacts(Progress cb) {
+        int removed = 0;
+        // 本地皮肤：整个目录都是脚本产出，直接清。
+        removed += deleteTreeCount(new File(webDir, "public/assets/skin"), null);
+        // 本地地图/UI 美术：整个目录都是脚本产出，直接清。
+        removed += deleteTreeCount(new File(webDir, "public/assets/local"), null);
+        // 干员头像/立绘：**只删 .png**。发行包里自带的那批是 .webp（按 alpha 裁过、
+        // 合并过 [alpha] 通道），是正确的那一份；.png 全是旧版脚本的产物，
+        // 留着会和 .webp 抢同一个 assets.json 路径，前端取到哪张全看运气。
+        removed += deleteTreeCount(new File(webDir, "public/assets/char"), ".png");
+        return removed;
+    }
+
+    /**
+     * 递归删除，返回删掉的文件数（目录本身不算）。
+     *
+     * @param onlyExt 非 null 时只删该扩展名（小写比较）的文件，目录保留
+     */
+    private static int deleteTreeCount(File f, String onlyExt) {
+        if (f == null || !f.exists()) return 0;
+        if (onlyExt != null && f.isFile()) {
+            return f.getName().toLowerCase(java.util.Locale.ROOT).endsWith(onlyExt) && f.delete() ? 1 : 0;
+        }
+        int n = 0;
+        File[] kids = f.listFiles();
+        if (kids != null) {
+            for (File kid : kids) {
+                if (kid.isDirectory()) {
+                    n += deleteTreeCount(kid, onlyExt);
+                    if (onlyExt == null) kid.delete();
+                } else if (onlyExt == null || kid.getName().toLowerCase(java.util.Locale.ROOT).endsWith(onlyExt)) {
+                    if (kid.delete()) n++;
+                }
+            }
+        }
+        if (onlyExt == null) f.delete();
+        return n;
     }
 
     /** 提取是否已经有产出（manifest 存在即视为跑过）。 */

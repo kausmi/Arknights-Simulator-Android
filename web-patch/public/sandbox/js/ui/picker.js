@@ -1,7 +1,18 @@
 // public/sandbox/js/ui/picker.js — 干员选择器（从 hud.js 抽出）。
+//
+// 0.1.16 重做：卡片结构从「img + span」改成「.pk__ava 画框 + .pk__body 两行」。
+//
+//   为什么要给 img 套一层画框：<img> 是替换元素，`height` 为 auto 时浏览器用图片自身的
+//   固有宽高比算高度，CSS 的 `aspect-ratio` 不参与 —— 于是 768×1024 的半身立绘会把
+//   格子撑到 1024 高，溢到相邻格子、叠成一团，`object-fit: cover` 也救不回来。
+//   把 aspect-ratio 放在普通元素 `.pk__ava` 上、img 绝对定位铺满它，才是可靠的裁法。
+//
+//   兼容性：按钮仍然是 `button.pk__op[data-act="picker-pick"][data-id]`，
+//   多选区底栏仍然在 `[data-multi-bar]`，搜索框仍由 shell.js 提供 ——
+//   controller.js 的事件委托与 `refs.picker.querySelector('.pk__head h2')` 都依赖它们。
 import { esc } from './html.js';
 import { PROFESSIONS } from '../operator-library.js';
-import { avatar } from '../asset-urls.js';
+import { avatar, rarityColor } from '../asset-urls.js';
 import { createAutoScroll } from './auto-scroll.js';
 
 // 多选：勾起来的人先攒着，点「加入」一次性全部进手牌。
@@ -26,9 +37,25 @@ export function setPicker(refs, on) {
   if (!on) refs._pickerAuto?.setEnabled(false);
 }
 
+/** 一张干员卡片。 */
+function card(o, picked) {
+  const rarity = Number(o.rarity) || 1;
+  const meta = [o.prof, o.cost ? `${o.cost}费` : ''].filter(Boolean).join(' · ');
+  return `<button class="pk__op${picked ? ' is-picked' : ''}" data-act="picker-pick" data-id="${esc(o.id)}"
+      title="${esc(o.name)} · ${esc(o.prof || '')} · ${esc(o.role || '')}"
+      style="--pk-rarity:${rarityColor(rarity)}">
+    <span class="pk__ava"><img src="${esc(avatar(o.charId))}" alt="" loading="lazy" decoding="async" /></span>
+    <span class="pk__body">
+      <span class="pk__name">${esc(o.name)}</span>
+      ${meta ? `<span class="pk__meta"><i></i>${esc(meta)}</span>` : ''}
+    </span>
+    ${multiOn ? `<i class="pk__check">${picked ? '✓' : ''}</i>` : ''}
+  </button>`;
+}
+
 /**
  * 选人器：自设干员与明确开放的支援，后接尚未接入的槽位。
- * @param {Array<{id,name,charId,rarity,prof}>} ops
+ * @param {Array<{id,name,charId,rarity,prof,profession,cost,role}>} ops
  * @param {Array<{name:string,owner:string}>} [reserve]
  */
 export function renderPicker(refs, ops, filter = '', reserve = []) {
@@ -42,16 +69,9 @@ export function renderPicker(refs, ops, filter = '', reserve = []) {
   }
   refs.pkProfessions.innerHTML = PROFESSIONS.map(([id, name]) => `<button class="dbtn${id === prof ? ' is-on' : ''}" data-prof="${id}">${name}</button>`).join('');
   const list = ops.filter((o) => (!prof || o.profession === prof) && (!q || o.name.includes(q) || o.id.includes(q)));
-  const ready = list.map((o) => {
-    const picked = multiSel.has(o.id);
-    return `<button class="pk__op${picked ? ' is-picked' : ''}" data-act="picker-pick" data-id="${esc(o.id)}"
-      title="${esc(o.name)} · ${esc(o.prof)} · ${esc(o.role || '')}">
-    <img src="${esc(avatar(o.charId))}" alt="" loading="lazy" /><span>${esc(o.name)}</span>
-    ${multiOn ? `<i class="pk__check">${picked ? '✓' : ''}</i>` : ''}
-  </button>`;
-  }).join('');
+  const ready = list.map((o) => card(o, multiSel.has(o.id))).join('');
   const slots = q ? '' : reserve.map((r) => `<div class="pk__op pk__op--hold" title="${esc(r.owner)}">
-    <i class="pk__ph">预留</i><span>${esc(r.name)}</span>
+    <i class="pk__ph">预留</i><span class="pk__body"><span class="pk__name">${esc(r.name)}</span></span>
   </div>`).join('');
   refs.pkGrid.innerHTML = ready + slots
     || '<p class="dr__hint">没有匹配的干员。</p>';

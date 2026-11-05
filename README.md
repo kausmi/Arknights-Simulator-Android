@@ -193,7 +193,7 @@
 
 ## 首次使用（Android）
 
-1. 安装 `Arknights-Simulator-Android-0.1.15.1.apk`（[最新 Release](https://github.com/kausmi/Arknights-Simulator-Android/releases/latest)）。
+1. 安装 `Arknights-Simulator-Android-0.1.16.apk`（[最新 Release](https://github.com/kausmi/Arknights-Simulator-Android/releases/latest)）。
 2. 打开应用，等它把资源解到本地（首次较慢，之后秒开）。
 3. 主菜单会弹一次引导，按提示走一遍即可。
 4. **（可选）** 想要官方美术：设置 →「方舟本地资源」→ 点「开始提取」→ 按提示授权 Shizuku。
@@ -219,6 +219,7 @@
 - Shizuku 直读方舟资源的桥接层（含干员立绘 / 皮肤 / 棋盘美术的解包脚本）
 - 干员详情页：数值 / 职业特性 / 天赋 / 模组 / 携带技能 / 潜能 / 皮肤
 - 内置 6 位新干员的专属技能实现（塔露拉、冻河、国度、奥尔佳、镜匠、行铃）
+- 干员列表竖版卡 + 职业图标栏 + 子职业筛选弹层；横屏详情页与「编辑数据」独立页
 - 手机布局、手势、教程层
 - 自定义干员（实验功能，支持子职业与自绘攻击范围）
 

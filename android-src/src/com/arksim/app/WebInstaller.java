@@ -59,11 +59,68 @@ public final class WebInstaller {
      *
      * @param step 进度回调，可能来自后台线程
      */
+    /**
+     * 清掉「有清单、没素材」的孤儿清单。
+     *
+     * 发行包里不再带 data/local-assets.json 等示例清单，但**老版本装过的机器**里
+     * 那些文件已经落到磁盘上（0.1.15 及之前的 APK 把它们打进过 web.zip），
+     * 而 KEEP_PATHS 会在每次升级时把它们原样保留下来。
+     * 于是前端就会拿着那份「声称有 1697 个素材」的清单去请求一堆不存在的图 ——
+     * HttpService 对图片 404 会回 200 + 灰剪影，界面上看起来正是用户报的
+     * 「资源提取了也没有任何作用，还是显示不出素材」。
+     *
+     * 判定很简单：清单在，但它指向的素材目录一个文件都没有 → 删清单，
+     * 前端 local() 拿到 404 就回落程序化渲染，画面反而是对的。
+     * 用户真的提取过（目录里有文件）就绝不会被删。
+     */
+    static void pruneOrphanManifests(File dir, Progress step) {
+        if (dir == null) return;
+        int dropped = 0;
+        // 清单 → 它描述的素材目录
+        String[][] pairs = {
+                {"data/local-assets.json", "public/assets/local"},
+                {"data/local-fx.json", "public/assets/local"},
+                {"data/local-skins.json", "public/assets/skin"},
+        };
+        for (String[] pair : pairs) {
+            File manifest = new File(dir, pair[0]);
+            if (!manifest.isFile() || manifest.length() <= 0) continue;
+            if (hasAnyFile(new File(dir, pair[1]))) continue;
+            if (manifest.delete()) {
+                dropped++;
+                step.on("清掉无效的素材清单 " + pair[0]);
+            }
+        }
+        if (dropped > 0) step.on("已清理 " + dropped + " 份没有对应素材的清单");
+    }
+
+    /** 目录里有没有至少一个文件（最多看 4000 个节点就收手，几 G 的目录也不会卡）。 */
+    private static boolean hasAnyFile(File dir) {
+        if (!dir.isDirectory()) return false;
+        java.util.ArrayDeque<File> queue = new java.util.ArrayDeque<>();
+        queue.add(dir);
+        int seen = 0;
+        while (!queue.isEmpty() && seen < 4000) {
+            File cur = queue.poll();
+            File[] kids = cur.listFiles();
+            if (kids == null) continue;
+            for (File kid : kids) {
+                seen++;
+                if (kid.isFile()) return true;
+                if (kid.isDirectory()) queue.add(kid);
+                if (seen >= 4000) break;
+            }
+        }
+        return false;
+    }
+
     public static File ensure(Context ctx, File base, Progress step) throws IOException {
         File dir = new File(base, "web");
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         final String VERSION = expectedVersion(ctx);
         if (VERSION.equals(prefs.getString(KEY, null)) && new File(dir, "public/studio/home.html").isFile()) {
+            // 老版本留下的示例清单也要清掉，所以快路径里同样跑一次。
+            pruneOrphanManifests(dir, step);
             return dir;
         }
 
@@ -104,17 +161,26 @@ public final class WebInstaller {
         File home = new File(staging, "public/studio/home.html");
         if (!home.isFile()) throw new IOException("网页资源不完整（解出 " + count + " 个文件，缺 home.html）");
 
-        // 把旧目录里的用户数据搬进新目录（同名覆盖新解出来的那份）。
+        // 把旧目录里的用户数据搬进新目录。
+        //
+        // ⚠ 目录型 KEEP 路径必须「合并」而不是「整目录替换」：
+        // public/assets/char 既是用户提取产物的落点，也是发行包里自带 202 张立绘的地方。
+        // 以前这里 deleteTree(dst) + renameTo 会把新解出来的立绘整目录换掉，
+        // 结果包里的 .webp 立绘永远进不到手机上 —— 用户看到的一直是旧的那批图。
+        // 现在：新包里有的文件一律用新的，新包里没有的（用户自己提取的）才从旧目录搬过来。
         int kept = 0;
         if (dir.isDirectory()) {
             for (String rel : KEEP_PATHS) {
                 File old = new File(dir, rel);
                 if (!old.exists()) continue;
                 File dst = new File(staging, rel);
-                deleteTree(dst);
-                File parent = dst.getParentFile();
-                if (parent != null && !parent.isDirectory() && !parent.mkdirs()) continue;
-                if (old.renameTo(dst)) kept++;
+                if (old.isDirectory()) {
+                    kept += mergeKeep(old, dst);
+                } else {
+                    File parent = dst.getParentFile();
+                    if (parent != null && !parent.isDirectory() && !parent.mkdirs()) continue;
+                    if (old.renameTo(dst)) kept++;
+                }
             }
             deleteTree(dir);
         }
@@ -124,6 +190,8 @@ public final class WebInstaller {
 
         prefs.edit().putString(KEY, VERSION).apply();
         step.on("网页资源就绪（" + count + " 个文件" + (kept > 0 ? "，保留本地提取与存档 " + kept + " 项" : "") + "）");
+        // 上面 KEEP_PATHS 会把老版本留下的示例清单原样搬进新目录，这里再清一次。
+        pruneOrphanManifests(dir, step);
         return dir;
     }
 
@@ -199,6 +267,29 @@ public final class WebInstaller {
     }
 
     /** 只在版本变化时用得到：清掉旧的一份，避免残留文件混进去。 */
+    /**
+     * 把 old 目录里「dst 没有的文件」补进 dst，返回补进去的顶层条目数。
+     * dst 已有的文件保持原样（= 用发行包里新解出来的那份）。
+     */
+    private static int mergeKeep(File old, File dst) {
+        if (old == null || !old.isDirectory()) return 0;
+        if (!dst.exists() && !dst.mkdirs() && !dst.isDirectory()) return 0;
+        int added = 0;
+        File[] kids = old.listFiles();
+        if (kids == null) return 0;
+        for (File kid : kids) {
+            File target = new File(dst, kid.getName());
+            if (kid.isDirectory()) {
+                added += mergeKeep(kid, target);
+            } else if (!target.isFile()) {
+                File parent = target.getParentFile();
+                if (parent != null && !parent.isDirectory() && !parent.mkdirs()) continue;
+                if (kid.renameTo(target)) added++;
+            }
+        }
+        return added;
+    }
+
     static void deleteTree(File f) {
         if (f == null || !f.exists()) return;
         File[] kids = f.listFiles();

@@ -30,7 +30,15 @@ import org.json.JSONObject;
  *     }
  *   }
  *
- * 四类改动互相独立，所以「只还原模组」「只还原天赋」做得到 —— 前端按类别 DELETE 对应键即可。
+ *         "skills": {                                      // 技能数值（按技能下标存）
+ *           "0": { "spCost": 4, "initSp": 0, "duration": 0, "level": 7 },
+ *           "2": { "spCost": 30 }
+ *         }
+ *       }
+ *     }
+ *   }
+ *
+ * 各类改动互相独立，所以「只还原模组」「只还原天赋」「只还原技能」做得到 —— 前端按类别 DELETE 对应键即可。
  *
  * 为什么按类别分开存：玩家经常只想把模组改回去而保留自己调过的基础数值。
  * 混在一个扁平对象里就没法分开还原了。
@@ -38,7 +46,7 @@ import org.json.JSONObject;
 public final class OperatorStore {
 
     /** 认可的四个改动类别。 */
-    public static final String[] CATEGORIES = {"loadout", "stats", "trait", "talents", "modules"};
+    public static final String[] CATEGORIES = {"loadout", "stats", "trait", "talents", "modules", "skills"};
 
     private final JSONObject nativeTable;
     private final JSONObject overrides;
@@ -126,6 +134,7 @@ public final class OperatorStore {
             applyTrait(rec, patch.optJSONObject("trait"), "trait");
             applyTalents(rec, patch.optJSONObject("talents"));
             applyModules(rec, patch.optJSONObject("modules"));
+            applySkills(rec, patch.optJSONObject("skills"));
             putSafe(ops, id, rec);
         }
         return base;
@@ -151,6 +160,7 @@ public final class OperatorStore {
         helper.applyTrait(copy, patch.optJSONObject("trait"), "trait");
         helper.applyTalents(copy, patch.optJSONObject("talents"));
         helper.applyModules(copy, patch.optJSONObject("modules"));
+        helper.applySkills(copy, patch.optJSONObject("skills"));
         return copy;
     }
 
@@ -178,21 +188,97 @@ public final class OperatorStore {
         if (!art.isEmpty()) putSafe(rec, "artVariant", art);
     }
 
-    /** 数据是满潜（rank 5）建的；从 rank 4 往下逐层覆盖叶子，落到目标 rank。 */
+    /**
+     * 把记录折到指定潜能档（数据是按满潜 rank 5 建的）。
+     *
+     * 潜能在这份数据里改两样东西，缺一不可：
+     *   ① `potDown` —— 数值叶子（费用 / 再部署 / 攻击 / 法抗 …），从 rank 4 往下逐层覆盖到目标档；
+     *   ② 天赋的 `potMin` / `potBelow` —— 官方那档「天赋效果增强」。例：惊蛰 rank < 4 时
+     *      攻击倍率 1.13 → 1.10、描述同时换成不带「（+3%）」的那句。
+     *
+     * 只做 ① 会让低潜能只减费用不减天赋，跟游戏里对不上；旧版本就是这个毛病，
+     * 覆盖表里选 3 潜和选 6 潜除了几个数值以外没有任何差别。
+     * 折算规则与网页端 shared/potential.js 的 atRank() 逐条对齐，两边必须算出同一个数。
+     */
     private void applyPotential(JSONObject rec, int rank) {
         JSONObject down = rec.optJSONObject("potDown");
-        if (down == null) return;
-        for (int r = 4; r >= rank; r--) {
-            JSONObject step = down.optJSONObject(String.valueOf(r));
-            if (step == null) continue;
-            java.util.Iterator<String> ks = step.keys();
-            while (ks.hasNext()) {
-                String path = ks.next();
-                Object v = step.opt(path);
-                if (v == null) continue;
-                setDotted(rec, path, v);
+        if (down != null) {
+            for (int r = 4; r >= rank; r--) {
+                JSONObject step = down.optJSONObject(String.valueOf(r));
+                if (step == null) continue;
+                java.util.Iterator<String> ks = step.keys();
+                while (ks.hasNext()) {
+                    String path = ks.next();
+                    Object v = step.opt(path);
+                    if (v == null) continue;
+                    setDotted(rec, path, v);
+                }
             }
         }
+
+        JSONArray talents = rec.optJSONArray("talents");
+        if (talents != null) putSafe(rec, "talents", talentsAtRank(talents, rank));
+        JSONArray talentsBase = rec.optJSONArray("talentsBase");
+        if (talentsBase != null) putSafe(rec, "talentsBase", talentsAtRank(talentsBase, rank));
+        JSONArray mods = rec.optJSONArray("modules");
+        if (mods != null) {
+            for (int i = 0; i < mods.length(); i++) {
+                JSONObject m = mods.optJSONObject(i);
+                if (m == null) continue;
+                JSONArray changes = m.optJSONArray("talentChanges");
+                if (changes != null) putSafe(m, "talentChanges", talentsAtRank(changes, rank));
+            }
+        }
+        // 按模组分表的天赋（当前数据 0 条，但 potential.js 里有这一支，保持一致免得以后漏）。
+        JSONObject byModule = rec.optJSONObject("byModule");
+        if (byModule != null) {
+            java.util.Iterator<String> ids = byModule.keys();
+            while (ids.hasNext()) {
+                JSONObject bm = byModule.optJSONObject(ids.next());
+                if (bm == null) continue;
+                JSONArray list = bm.optJSONArray("talents");
+                if (list != null) putSafe(bm, "talents", talentsAtRank(list, rank));
+            }
+        }
+    }
+
+    /** 一整个天赋列表折到 rank（逐项走 {@link #talentAtRank}）。 */
+    private static JSONArray talentsAtRank(JSONArray list, int rank) {
+        if (list == null) return null;
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < list.length(); i++) {
+            Object t = list.opt(i);
+            out.put(t instanceof JSONObject ? talentAtRank((JSONObject) t, rank) : t);
+        }
+        return out;
+    }
+
+    /**
+     * 一条天赋折到 rank：只要 `rank < potMin` 就顺着 `potBelow` 换下一档，并把下一档带的字段并进结果。
+     *
+     * `potBelow` 是「这一档改了什么」的部分条目（通常只有 desc / descRaw / bb），
+     * 所以要往上并，而不是整体替换。返回的条目不带 potMin / potBelow。
+     */
+    private static JSONObject talentAtRank(JSONObject t, int rank) {
+        if (t == null) return null;
+        if (!t.has("potMin") && !t.has("potBelow")) return t;
+        JSONObject out = copy(t);
+        out.remove("potMin");
+        out.remove("potBelow");
+        JSONObject x = t;
+        while (x.optJSONObject("potBelow") != null) {
+            int min = x.has("potMin") ? x.optInt("potMin", 0) : 0;
+            if (rank >= min) break;
+            x = x.optJSONObject("potBelow");
+            java.util.Iterator<String> ks = x.keys();
+            while (ks.hasNext()) {
+                String k = ks.next();
+                if (k.equals("potMin") || k.equals("potBelow")) continue;
+                Object v = x.opt(k);
+                if (v != null) putSafe(out, k, v);
+            }
+        }
+        return out;
     }
 
     /** 按点路径写一个标量。只覆盖已存在的对象，不凭空造结构（避免把记录写坏）。 */
@@ -207,11 +293,18 @@ public final class OperatorStore {
     }
 
     /**
-     * 换模组。
+     * 换模组：stats / trait / talents 三样一起重新算。
      *
-     * "none" 表示不装 —— 此时 stats 回到 statsBase，职业特性回到 traitBase。
-     * 装某个模组时 stats = statsBase + 该模组 attr；特性优先用模组改写过的那份。
-     * 老数据没有 statsBase（143 条）的，就只改 module 标记与特性，数值不动 ——
+     * 反复切换模组时**必须每次都从基线重算**，不能在上一次的结果上再叠：
+     *   ① stats      = statsBase + 该模组 attr
+     *   ② trait      = traitBase 上盖该模组的 traitOverride
+     *   ③ talents    = talentsBase 上合并该模组的 talentChanges
+     *
+     * 老实现是在当前的 trait 上 deepMerge、完全不动 talents —— 于是「装了 A 再换 B」会把 A 的特性残留带过去，
+     * 而模组自己改写的天赋（例：能天使 MAR-X 让「天使的祝福」攻击加成从 8% 抬到 10%）永远看不到，
+     * 详情面板里显示的还是没加强的那句。用户 m13851 报的就是这个。
+     *
+     * 老数据没有 statsBase / traitBase（143 条）的，退化成只改 module 标记，数值不动 ——
      * 宁可不重算，也不能拿「已含模组」的 stats 再叠一次 attr，那会直接叠爆。
      */
     private void applyModuleChoice(JSONObject rec, String moduleId) {
@@ -223,12 +316,15 @@ public final class OperatorStore {
         putSafe(none, "level", 0);
         putSafe(none, "active", false);
 
+        JSONObject statsBase = rec.optJSONObject("statsBase");
+        JSONObject traitBase = rec.optJSONObject("traitBase");
+        JSONArray talentsBase = rec.optJSONArray("talentsBase");
+
         if (moduleId.isEmpty() || moduleId.equals("none")) {
             putSafe(rec, "module", none);
-            JSONObject base = rec.optJSONObject("statsBase");
-            if (base != null) putSafe(rec, "stats", copy(base));
-            JSONObject tb = rec.optJSONObject("traitBase");
-            if (tb != null) putSafe(rec, "trait", copy(tb));
+            if (statsBase != null) putSafe(rec, "stats", copy(statsBase));
+            if (traitBase != null) putSafe(rec, "trait", copy(traitBase));
+            if (talentsBase != null) putSafe(rec, "talents", copyArray(talentsBase));
             return;
         }
         if (mods == null) return;
@@ -242,12 +338,16 @@ public final class OperatorStore {
             putSafe(mark, "type", m.optString("typeName", ""));
             putSafe(mark, "level", m.optInt("level", 3));
             putSafe(mark, "active", true);
+            if (m.optBoolean("isSpecial", false)) {
+                putSafe(mark, "isSpecial", true);
+                putSafe(mark, "specialDesc", m.optString("specialDesc", "适配限定模式"));
+            }
             putSafe(rec, "module", mark);
 
-            JSONObject base = rec.optJSONObject("statsBase");
+            // ① stats = statsBase + attr
             JSONObject attr = m.optJSONObject("attr");
-            if (base != null) {
-                JSONObject s = copy(base);
+            if (statsBase != null) {
+                JSONObject s = copy(statsBase);
                 if (attr != null) {
                     java.util.Iterator<String> ks = attr.keys();
                     while (ks.hasNext()) {
@@ -259,15 +359,152 @@ public final class OperatorStore {
                 }
                 putSafe(rec, "stats", s);
             }
+
+            // ② trait = traitBase 上盖 traitOverride
             JSONObject to = m.optJSONObject("traitOverride");
-            if (to != null && to.optString("desc", "").length() > 0) {
-                JSONObject trait = rec.optJSONObject("trait");
-                JSONObject merged = trait == null ? new JSONObject() : copy(trait);
-                deepMerge(merged, to);
+            JSONObject traitSeed = traitBase != null ? copy(traitBase) : rec.optJSONObject("trait");
+            if (traitSeed != null) {
+                JSONObject merged = copy(traitSeed);
+                if (to != null && to.length() > 0) deepMerge(merged, to);
                 putSafe(rec, "trait", merged);
             }
+
+            // ③ talents = talentsBase 上合并 talentChanges
+            JSONArray seed = talentsBase != null ? talentsBase : rec.optJSONArray("talents");
+            if (seed != null) putSafe(rec, "talents", mergeModuleTalents(seed, m.optJSONArray("talentChanges")));
             return;
         }
+    }
+
+    /**
+     * 把模组的 talentChanges 合并进一份天赋表（对齐 shared 层 mergeTalentChanges 的规则）。
+     *
+     * 命中同 index 的天赋时是「部分覆盖」而不是整体替换：
+     *   name / desc / descRaw —— change 有就用 change 的，空则保留原句（很多模组只改数值不改文案）；
+     *   bb / bbStr           —— 原表打底、change 覆盖（例：atk 0.08 → 0.10，其余键不动）；
+     *   rangeGrid / tokenKey —— change 优先，空则沿用；
+     *   hidden               —— 两侧都为真才算隐藏（原表可见的天赋不会因为模组而被藏掉）。
+     *
+     * talentIndex 为负或找不到对应天赋时，作为一条新天赋追加（index 就是 talentIndex）。
+     */
+    /** 数组的深拷贝（只处理元素是对象的场景，其余按原样放回）。 */
+    private static JSONArray copyArray(JSONArray src) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < src.length(); i++) {
+            Object o = src.opt(i);
+            out.put(o instanceof JSONObject ? copy((JSONObject) o) : o);
+        }
+        return out;
+    }
+
+    /** deepMerge 的静态版：mergeModuleTalents 是静态方法，改天赋时要用到同样的规则。 */
+    private static void deepMergeInto(JSONObject target, JSONObject src) {
+        java.util.Iterator<String> ks = src.keys();
+        while (ks.hasNext()) {
+            String k = ks.next();
+            Object v = src.opt(k);
+            if (v instanceof JSONObject) {
+                JSONObject child = target.optJSONObject(k);
+                boolean created = child == null;
+                if (created) child = new JSONObject();
+                deepMergeInto(child, (JSONObject) v);
+                if (created) putSafe(target, k, child);
+            } else if (v != null) {
+                putSafe(target, k, v);
+            }
+        }
+    }
+
+    private static JSONArray mergeModuleTalents(JSONArray base, JSONArray changes) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < base.length(); i++) {
+            Object o = base.opt(i);
+            out.put(o instanceof JSONObject ? copy((JSONObject) o) : o);
+        }
+        if (changes == null) return out;
+
+        for (int j = 0; j < changes.length(); j++) {
+            JSONObject ch = changes.optJSONObject(j);
+            if (ch == null) continue;
+            int idx = ch.optInt("talentIndex", -1);
+
+            int at = -1;
+            if (idx >= 0) {
+                for (int i = 0; i < out.length(); i++) {
+                    JSONObject t = out.optJSONObject(i);
+                    if (t != null && t.optInt("index", Integer.MIN_VALUE) == idx) {
+                        at = i;
+                        break;
+                    }
+                }
+            }
+
+            JSONObject built = new JSONObject();
+            java.util.Iterator<String> ks = ch.keys();
+            while (ks.hasNext()) {
+                String k = ks.next();
+                if (k.equals("talentIndex")) continue;
+                Object v = ch.opt(k);
+                if (v != null) putSafe(built, k, v);
+            }
+            putSafe(built, "index", idx);
+            putSafe(built, "fromModule", true);
+
+            if (at < 0) {
+                out.put(built);
+                continue;
+            }
+
+            JSONObject old = out.optJSONObject(at);
+            if (old == null) {
+                out.put(built);
+                continue;
+            }
+            for (String k : new String[]{"name", "desc", "descRaw"}) {
+                if (built.optString(k, "").isEmpty()) {
+                    Object ov = old.opt(k);
+                    if (ov != null) putSafe(built, k, ov);
+                }
+            }
+            for (String k : new String[]{"bb", "bbStr"}) {
+                JSONObject o = old.optJSONObject(k);
+                JSONObject sum = o != null ? copy(o) : new JSONObject();
+                JSONObject c = built.optJSONObject(k);
+                if (c != null) deepMergeInto(sum, c);
+                putSafe(built, k, sum);
+            }
+            Object rg = built.opt("rangeGrid");
+            if (rg == null || rg == JSONObject.NULL) {
+                Object ov = old.opt("rangeGrid");
+                putSafe(built, "rangeGrid", ov != null ? ov : JSONObject.NULL);
+            }
+            if (built.optString("tokenKey", "").isEmpty()) {
+                Object ov = old.opt("tokenKey");
+                putSafe(built, "tokenKey", ov != null ? ov : JSONObject.NULL);
+            }
+            putSafe(built, "hidden", old.optBoolean("hidden", false) && built.optBoolean("hidden", false));
+            try { out.put(at, built); } catch (Exception ignored) { }
+        }
+
+        // 与 shared 层同一条过滤：什么都没有的天赋不留（模组里常见的「只隐藏」空壳）
+        JSONArray kept = new JSONArray();
+        for (int i = 0; i < out.length(); i++) {
+            Object raw = out.opt(i);
+            JSONObject t = raw instanceof JSONObject ? (JSONObject) raw : null;
+            if (t == null) {
+                kept.put(raw);
+                continue;
+            }
+            boolean keep = !t.optString("name", "").isEmpty()
+                    || !t.optString("desc", "").isEmpty()
+                    || !t.optString("tokenKey", "").isEmpty();
+            if (!keep) {
+                JSONObject bb = t.optJSONObject("bb");
+                if (bb != null && bb.length() > 0) keep = true;
+            }
+            if (keep) kept.put(t);
+        }
+        return kept;
     }
 
     /** 换携带技能：把 rec.skill 指向 skills[idx]（引擎只认单数那个 skill）。 */
@@ -329,6 +566,55 @@ public final class OperatorStore {
             JSONObject delta = patch.optJSONObject(idxKey);
             if (target == null || delta == null) continue;
             deepMerge(target, delta);
+        }
+    }
+
+    /**
+     * 技能数值（「修改技能数值」）。
+     *
+     * 为什么按**下标**存而不是按 skillId：同一个干员三个技能的 skillId 各不相同，玩家改的是
+     * 「第一 / 第二 / 第三技能」这个位置，位置才是稳定的锚点。记录里 skills[] 与 skill（当前携带的那个）
+     * 是两份独立副本，只改一份的话——沙盒读 skills[]、详情面板读 skill——两边会显示不同的数。
+     * 所以这里同时写：skills[idx]，并在 skill.index == idx 时把同样的值叠到 skill 上。
+     *
+     * 只认白名单键：spCost / initSp / duration / level / maxChargeTime / increment / durationType / spType。
+     * 不给「改攻击范围」—— 用户明确要求攻击范围不可改（rangeId / rangeGrid 一个都不在这里）。
+     */
+    private void applySkills(JSONObject rec, JSONObject patch) {
+        if (patch == null || patch.length() == 0) return;
+        JSONArray skills = rec.optJSONArray("skills");
+        java.util.Iterator<String> keys = patch.keys();
+        while (keys.hasNext()) {
+            String idxKey = keys.next();
+            int idx;
+            try {
+                idx = Integer.parseInt(idxKey);
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            JSONObject delta = patch.optJSONObject(idxKey);
+            if (delta == null) continue;
+            JSONObject target = skills != null && idx >= 0 && idx < skills.length() ? skills.optJSONObject(idx) : null;
+            // 有的老记录没有 skills[]，只有单个 skill：下标 0 就落到它身上
+            if (target == null && idx == 0) target = rec.optJSONObject("skill");
+            if (target == null) continue;
+            mergeSkillNumbers(target, delta);
+            JSONObject cur = rec.optJSONObject("skill");
+            if (cur != null && cur != target && cur.optInt("index", -1) == idx) mergeSkillNumbers(cur, delta);
+        }
+    }
+
+    private static void mergeSkillNumbers(JSONObject target, JSONObject delta) {
+        java.util.Iterator<String> ks = delta.keys();
+        while (ks.hasNext()) {
+            String k = ks.next();
+            Object v = delta.opt(k);
+            boolean numeric = k.equals("spCost") || k.equals("initSp") || k.equals("duration")
+                    || k.equals("level") || k.equals("maxChargeTime") || k.equals("increment");
+            boolean textual = k.equals("spType") || k.equals("durationType");
+            if (numeric && v instanceof Number) putSafe(target, k, v);
+            else if (textual && v instanceof String) putSafe(target, k, v);
+            // 其余键（rangeId / rangeGrid / desc / bb …）一律忽略：既不支持也不该被顺手改掉
         }
     }
 

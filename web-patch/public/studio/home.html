@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="ark-doc hs-doc">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="light" />
   <meta name="robots" content="noindex, nofollow" />
   <title>开始 · 明日方舟模拟器</title>
   <link rel="icon" href="/icons/favicon.ico?v=arksim" sizes="16x16 32x32 48x48" />
@@ -11,83 +11,155 @@
   <link rel="stylesheet" href="/css/theme.css" />
   <link rel="stylesheet" href="/sandbox/menu.css" />
   <link rel="stylesheet" href="/sandbox/terminal.css" />
-  <link rel="stylesheet" href="/sandbox/menu-themes.css" />
-  <link rel="stylesheet" href="/sandbox/menu-layout.css" />
+  <link rel="stylesheet" href="/sandbox/panel-redesign.css" />
   <link rel="stylesheet" href="/sandbox/interface-text.css" />
-  <link rel="stylesheet" href="/sandbox/menu-fit.css" />
-  <link rel="stylesheet" href="/css/mobile-fit.css" />
   <link rel="stylesheet" href="/css/responsive.css" />
+  <link rel="stylesheet" href="/css/ark-ui.css?v=6" />
+  <link rel="stylesheet" href="/studio/home-v2.css?v=7" />
+  <link rel="stylesheet" href="/css/ark-pages.css?v=8" />
   <script src="/sandbox/js/terminal-navigation.js"></script>
-  <!-- 把 Android 壳量到的挖孔 / 手势条尺寸写进 CSS 变量：env(safe-area-inset-*) 在
-       WebView 里常常没值，而且本页可能跑在 iframe 里拿不到外层变量，所以每个文档自己问一次。 -->
+  <!-- 把 Android 壳量到的挖孔 / 手势条尺寸写进 CSS 变量 -->
   <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
 </head>
-<body class="menu-screen">
-  <div class="page__topbar">
-    <span class="page__crumb">ARKNIGHTS / SIMULATOR</span>
-    <span class="page__tail">LOCAL WORKSPACE</span>
-  </div>
-  <main class="menu__content">
-    <header class="menu__heading"><span class="menu__eyebrow">TACTICAL SIMULATION TERMINAL</span>
-      <h1>明日方舟<span>模拟器</span></h1><p>从一次自由演练，到一场完整作战。</p>
-      <img class="menu__brand" src="/icons/app.svg" alt="ARK/SIM" width="125" height="125" />
+<body class="ark-home-doc">
+  <div class="ark-home__bg" aria-hidden="true"></div>
+
+  <main class="ark-home">
+    <header class="ark-home__top">
+      <nav class="ark-home__marks" aria-label="快捷入口">
+        <a class="ark-mark" href="/studio/console.html" title="自由沙盒" aria-label="自由沙盒">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h7v7H3z M14 4h7v7h-7z M3 13h7v7H3z M14 13h7v7h-7z"/></svg>
+        <span class="ark-mark__label">沙盒</span></a>
+        <a class="ark-mark" href="/studio/play.html" title="游玩自制关卡" aria-label="游玩自制关卡">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 3h14v18H5z M10 8l6 4-6 4z"/></svg>
+        <span class="ark-mark__label">游玩</span></a>
+        <a class="ark-mark" href="/studio/level.html" title="关卡制作器" aria-label="关卡制作器">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5h12v15H3z M7 10h4 M7 14h4 M14 10l5-7 3 2-5 7-4 2z"/></svg>
+        <span class="ark-mark__label">制图</span></a>
+        <a class="ark-mark" href="/studio/operators.html" title="干员详情" aria-label="干员详情">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10 M10 20V5 M16 20v-7 M22 20V8"/></svg>
+        <span class="ark-mark__label">干员</span></a>
+        <a class="ark-mark" href="/studio/help.html" title="教程与帮助" aria-label="教程与帮助">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="ark-mark__label">帮助</span></a>
+        <button class="ark-mark" type="button" data-ark-action="music" title="音乐开关" aria-label="音乐开关">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>
+          <i class="ark-mark__state" data-ark-music-state></i><span class="ark-mark__label">音乐</span>
+        </button>
+        <button class="ark-mark" type="button" data-ark-action="settings" title="全局设置" aria-label="全局设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3 M12 18.4v3 M2.6 12h3 M18.4 12h3 M5.3 5.3l2.1 2.1 M16.6 16.6l2.1 2.1 M18.7 5.3l-2.1 2.1 M7.4 16.6l-2.1 2.1"/></svg><span class="ark-mark__label">设置</span>
+        </button>
+      </nav>
+
+      <div class="ark-home__res" aria-label="本机状态">
+        <span class="ark-res"><b>10</b><i>存档位</i></span>
+        <span class="ark-res"><b id="ark-level-count">—</b><i>自制关卡</i></span>
+        <span class="ark-res ark-res--accent"><b>本机</b><i>资源</i></span>
+      </div>
     </header>
-    <!-- 主界面排布：三个「玩」的主功能放大卡，两个「配置 / 查阅」的次入口放下面一条小卡。
-         手机上五张等大的卡会挤成一条缝，分层之后主次一目了然。 -->
-    <div class="menu__primary">
-      <a class="menu-card menu-card--hero" href="/studio/console.html">
-        <span class="menu-card__top">01 / SANDBOX <span>自由演练</span></span>
-        <span class="menu-card__art menu-card__art--sandbox" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg><b>SI</b></span>
-        <span class="menu-card__body"><strong>自由沙盒</strong><span>构筑地形，部署干员，编排敌人与路线。<br>十个本地存档位，可自定义名称，随时保存与继续。</span></span>
-        <span class="menu-card__foot">进入沙盒 <b>→</b></span>
-      </a>
-      <a class="menu-card" href="/studio/play.html">
-        <span class="menu-card__top">02 / OPERATIONS <span>自制作战</span></span>
-        <span class="menu-card__art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3v18l15-9z"/></svg><b>OP</b></span>
-        <span class="menu-card__body"><strong>游玩自制关卡</strong><span>查看地形与敌方情报，挑选出战干员。<br>自由编队，选择技能，开始战斗。</span></span>
-        <span class="menu-card__foot">选择关卡 <b>→</b></span>
-      </a>
-      <a class="menu-card" href="/studio/level.html">
-        <span class="menu-card__top">03 / LEVEL EDITOR <span>关卡制作</span></span>
-        <span class="menu-card__art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 5h9v16H4z M10 17l3-6 6-8 3 3-6 8z"/></svg><b>LV</b></span>
-        <span class="menu-card__body"><strong>关卡制作器</strong><span>设计地形、路线与敌人出生。<br>制作关卡，保存分享，打开试玩。</span></span>
-        <span class="menu-card__foot">进入编辑器 <b>→</b></span>
-      </a>
-    </div>
 
-    <div class="menu__secondary">
-      <a class="menu-mini" href="/studio/operators.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 20V10 M10 20V5 M16 20v-7 M22 20V8"/></svg>
-        <div><b>干员数值调整</b><small>基础数值 · 模组 · 天赋 · 职业特性</small></div>
-        <span class="menu-mini__arrow">→</span>
-      </a>
-      <a class="menu-mini" href="/studio/help.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 5h7v15H4z M13 5h7v15h-7z M11 3v18"/></svg>
-        <div><b>教程与帮助</b><small>上手流程 · 操作 · 读资源 · 常见问题</small></div>
-        <span class="menu-mini__arrow">→</span>
-      </a>
-    </div>
+    <section class="ark-home__left">
+      <div class="ark-home__brand">
+        <span class="ark-eyebrow">ARKNIGHTS / SIMULATOR</span>
+        <h1>明日方舟<br><em>模拟器</em></h1>
+        <p>自由沙盒 · 作战演练 · 关卡制作</p>
+      </div>
 
-    <footer class="menu__footer"><span>ARKNIGHTS SIMULATOR</span><span>战场构筑 / 作战演练</span></footer>
+      <div class="ark-home__news">
+        <span class="ark-news-tag">BREAKING NEWS</span>
+        <div class="ark-news-body">
+          <b>首次使用请先读取本机资源</b>
+          <span>进入后会提示读取本机安装的明日方舟资源，读完才有干员立绘与技能图标。全部数据留在设备本地。</span>
+        </div>
+      </div>
+
+      <div class="ark-home__watermark" aria-hidden="true">ARKNIGHTS</div>
+    </section>
+
+    <section class="ark-home__grid">
+      <a class="ark-tile ark-tile--terminal" href="/studio/console.html">
+        <i class="ark-tile__water" aria-hidden="true">SI</i>
+        <span class="ark-terminal__num"><b>10</b><i>存档位</i></span>
+        <span class="ark-terminal__main">
+          <strong>自由沙盒</strong>
+          <span>构筑地形，部署干员，编排敌人与路线</span>
+          <span class="ark-terminal__bar"><i></i></span>
+        </span>
+        <span class="ark-tile__go">进入沙盒 <b>→</b></span>
+      </a>
+
+      <a class="ark-tile" href="/studio/play.html">
+        <i class="ark-tile__water" aria-hidden="true">OP</i>
+        <span class="ark-tile__head"><span class="ark-tile__no">02 / OPERATIONS</span><span class="ark-tile__go">选择关卡 <b>→</b></span></span>
+        <strong class="ark-tile__title">游玩自制关卡</strong>
+        <span class="ark-tile__desc">查看地形与敌方情报，挑选出战干员，自由编队开打。</span>
+      </a>
+
+      <a class="ark-tile" href="/studio/operators.html">
+        <i class="ark-tile__water" aria-hidden="true">OP</i>
+        <span class="ark-tile__head"><span class="ark-tile__no">03 / OPERATORS</span><span class="ark-tile__go">角色管理 <b>→</b></span></span>
+        <strong class="ark-tile__title">干员详情</strong>
+        <span class="ark-tile__desc">数值 · 技能 · 模组 · 潜能 · 立绘。</span>
+      </a>
+
+      <a class="ark-tile ark-tile--accent" href="/studio/level.html">
+        <i class="ark-tile__water" aria-hidden="true">LV</i>
+        <span class="ark-tile__head"><span class="ark-tile__no">04 / EDITOR</span><span class="ark-tile__go">编辑器 <b>→</b></span></span>
+        <strong class="ark-tile__title">关卡制作器</strong>
+        <span class="ark-tile__desc">设计地形、路线与敌人出生，保存分享或直接试玩。</span>
+      </a>
+
+      <a class="ark-tile" href="/studio/help.html">
+        <i class="ark-tile__water" aria-hidden="true">?</i>
+        <span class="ark-tile__head"><span class="ark-tile__no">05 / GUIDE</span><span class="ark-tile__go">看一遍 <b>→</b></span></span>
+        <strong class="ark-tile__title">教程与帮助</strong>
+        <span class="ark-tile__desc">上手流程 · 操作 · 读资源 · 常见问题。</span>
+      </a>
+    </section>
   </main>
+
   <script type="module">
-    // 首次进入引导：只在第一次打开主菜单时出现，走完记个标记。
     import { shouldOnboard, showOnboarding } from '/sandbox/js/ui/onboard.js';
     import { scheduleAssetHint } from '/sandbox/js/ui/asset-hint.js';
     const onboard = shouldOnboard();
-    if (onboard) {
-      // 等入场动画把主页画出来再弹，免得盖住动画
-      setTimeout(() => showOnboarding(), 1400);
-    }
-    // 「该更新方舟资源了」的提醒：首次进入 / 游戏热更之后各弹一次。
-    // 和引导错开，两层弹窗不会同时叠在一起（asset-hint 内部也会等引导关掉）。
+    if (onboard) setTimeout(() => showOnboarding(), 1400);
     scheduleAssetHint({ delay: onboard ? 3200 : 1800 });
+
+
+    // 左侧两个图标按钮转发给终端壳注入的「音乐 / 全局设置」按钮：
+    // 那两个按钮固定浮在右下会压住卡片，这里统一收进左上角图标列。
+    const forward = (sel) => {
+      const btn = document.querySelector(sel);
+      if (btn) btn.click();
+    };
+    document.querySelectorAll('[data-ark-action]').forEach((b) => {
+      b.addEventListener('click', () => {
+        forward(b.dataset.arkAction === 'music' ? '[data-terminal-music]' : '[data-terminal-settings]');
+      });
+    });
+    // 音乐开/关状态同步到图标上的小圆点
+    const syncMusic = () => {
+      const btn = document.querySelector('[data-terminal-music]');
+      const dot = document.querySelector('[data-ark-music-state]');
+      if (!btn || !dot) return;
+      const on = btn.getAttribute('aria-pressed') === 'true' || /开/.test(btn.textContent || '');
+      dot.classList.toggle('is-on', on);
+    };
+    syncMusic();
+    new MutationObserver(syncMusic).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed'] });
+
+    // 右上角「自制关卡」数量：直接问关卡库，失败就留破折号。
+    fetch('/api/levels', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        const n = Array.isArray(b?.levels) ? b.levels.length : null;
+        const el = document.getElementById('ark-level-count');
+        if (el && n != null) el.textContent = String(n);
+      })
+      .catch(() => {});
   </script>
   <script type="module" src="/sandbox/js/terminal-shell.js"></script>
   <script>
-    // 壳（Android）调用的两个入口：一条提示、一个授权教程弹层。
-    // 包里那套终端风弹层由 /sandbox/js/ui/asset-pack.js 提供；这里先挂占位，
-    // 等它加载完再覆盖成真实现 —— 这样壳在任何时刻调都不会报错。
     window.__arksimToast = function (t) {
       var d = document.createElement('div');
       d.className = 'arksim-toast'; d.textContent = t;

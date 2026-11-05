@@ -1,0 +1,783 @@
+/* public/css/ark-pages.css — 干员详情 / 设置弹层 / 帮助页的统一层（2026-11-04）。
+ *
+ * 为什么单独一份：这三块以前各有各的年代样式（operators.css 541 行、panel-redesign.css、
+ * menu.css），互相用重复类名抬特异性，谁最后加载谁赢。这里用一套 token + 新选择器把它们
+ * 全部重画，只覆盖外观与布局，不动 JS 依赖的 id / class（ops.js、settings.js 仍然按老名字找节点）。
+ *
+ * 尺寸一律 px / clamp(vh)：本项目 1rem 在手机上只有 32–33px（见 css/theme.css 的 html 字号）。
+ */
+
+/* ---- 0. token（与 ark-ui.css 同源，独立声明以便本文件也能单独加载）-------- */
+html.ark-doc {
+  --ark-bg: #e9ebeb;
+  --ark-panel: #ffffff;
+  --ark-ink: #22282a;
+  --ark-ink-2: #59636a;
+  --ark-ink-3: #8b9599;
+  --ark-line: #c9d0d2;
+  --ark-line-2: #dfe4e5;
+  --ark-accent: #00a2c8;
+  --ark-accent-2: #0086a8;
+  --ark-red: #e2392c;
+  --ark-amber: #f0a92b;
+  --ark-gap: clamp(8px, 1.4vh, 14px);
+  --ark-pad: clamp(12px, 2.2vh, 24px);
+  background: var(--ark-bg);
+  overscroll-behavior: none;
+}
+html.ark-doc body {
+  margin: 0;
+  background: var(--ark-bg);
+  color: var(--ark-ink);
+  overscroll-behavior: none;
+  font-family: 'Noto Sans SC', 'Source Han Sans SC', system-ui, sans-serif;
+}
+
+/* ---- 1. 通用页头（各页自己的 .page__topbar）------------------------------ */
+html.ark-doc .page__topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: clamp(34px, 5vh, 44px);
+  padding: 0 var(--ark-pad);
+  margin: 0;
+  background: var(--ark-panel);
+  border-bottom: 1px solid var(--ark-line-2);
+  box-sizing: border-box;
+}
+html.ark-doc .page__topbar .page__back {
+  color: var(--ark-ink);
+  font-size: clamp(12px, 1.6vh, 14px);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--ark-line);
+  border-radius: 2px;
+  background: #fff;
+}
+html.ark-doc .page__topbar .page__crumb {
+  color: var(--ark-ink-3);
+  font-size: clamp(10px, 1.35vh, 12px);
+  letter-spacing: .12em;
+}
+
+/* ---- 2. 干员详情 -------------------------------------------------------- */
+html.ark-doc.ops-doc .ops {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ark-gap);
+  height: calc(100svh - clamp(34px, 5vh, 44px));
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--ark-gap) var(--ark-pad);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+/* 原来的大标题占掉半屏、手机上还要滚很久才看得到列表 —— 收成一行 eyebrow。 */
+html.ark-doc.ops-doc .ops__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ark-gap);
+  flex: 0 0 auto;
+}
+html.ark-doc.ops-doc .ops__headmain .menu__eyebrow {
+  font-size: clamp(9px, 1.2vh, 11px);
+  letter-spacing: .16em;
+  color: var(--ark-ink-3);
+}
+html.ark-doc.ops-doc .ops__headmain h1 {
+  margin: 2px 0 0;
+  font-size: clamp(16px, 2.6vh, 26px);
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+html.ark-doc.ops-doc .ops__headmain h1 span { color: var(--ark-accent); }
+html.ark-doc.ops-doc .ops__headmain p { display: none; }
+html.ark-doc.ops-doc .ops__headactions { display: flex; gap: 8px; flex: 0 0 auto; }
+html.ark-doc.ops-doc .ops__custom,
+html.ark-doc.ops-doc .ops__reset {
+  height: clamp(28px, 4vh, 34px);
+  padding: 0 12px;
+  font-size: clamp(11px, 1.45vh, 13px);
+  border: 1px solid var(--ark-line);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ark-ink);
+  white-space: nowrap;
+}
+html.ark-doc.ops-doc .ops__custom {
+  background: var(--ark-accent);
+  border-color: var(--ark-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 工具条：两行合成一行，控件统一高度 */
+html.ark-doc.ops-doc .ops__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+html.ark-doc.ops-doc .ops__bar-row { display: flex; align-items: center; gap: 8px; margin: 0; }
+html.ark-doc.ops-doc .ops__search {
+  width: min(46vw, 320px);
+  height: clamp(28px, 4vh, 34px);
+  padding: 0 10px;
+  font-size: clamp(11px, 1.45vh, 13px);
+  border: 1px solid var(--ark-line);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ark-ink);
+  box-sizing: border-box;
+}
+html.ark-doc.ops-doc .ops__count { font-size: clamp(10px, 1.35vh, 12px); color: var(--ark-ink-3); white-space: nowrap; }
+html.ark-doc.ops-doc .ops__filter {
+  height: clamp(28px, 4vh, 34px);
+  padding: 0 8px;
+  font-size: clamp(11px, 1.45vh, 13px);
+  border: 1px solid var(--ark-line);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ark-ink);
+}
+html.ark-doc.ops-doc .ops__only {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(11px, 1.45vh, 13px);
+  color: var(--ark-ink-2);
+}
+
+/* 主区：桌面/横屏两栏，竖屏上下 */
+html.ark-doc.ops-doc .ops__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: var(--ark-gap);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+html.ark-doc.ops-doc .ops__list {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  background: var(--ark-panel);
+  border: 1px solid var(--ark-line-2);
+  border-radius: 3px;
+}
+html.ark-doc.ops-doc .ops__item {
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 2px;
+  background: #fff;
+  font-size: clamp(12px, 1.5vh, 13.5px);
+  color: var(--ark-ink);
+  cursor: pointer;
+}
+html.ark-doc.ops-doc .ops__item:hover { background: #f3f6f7; }
+html.ark-doc.ops-doc .ops__item[aria-selected="true"],
+html.ark-doc.ops-doc .ops__item.is-on {
+  border-left-color: var(--ark-accent);
+  background: #eaf6f9;
+}
+html.ark-doc.ops-doc .ops__detail {
+  overflow-y: auto;
+  padding: var(--ark-gap);
+  background: var(--ark-panel);
+  border: 1px solid var(--ark-line-2);
+  border-radius: 3px;
+  font-size: clamp(12px, 1.5vh, 13.5px);
+  color: var(--ark-ink);
+}
+html.ark-doc.ops-doc .ops__hint { color: var(--ark-ink-3); font-size: 13px; }
+html.ark-doc.ops-doc .ops__hint--special { color: var(--ark-amber); }
+
+/* 详情内部：所有分区统一成「标题 + 细线 + 内容」 */
+html.ark-doc.ops-doc .ops__sec {
+  margin: 0 0 var(--ark-gap);
+  padding: 0 0 var(--ark-gap);
+  border: 0;
+  border-bottom: 1px solid var(--ark-line-2);
+}
+html.ark-doc.ops-doc .ops__sec:last-child { border-bottom: 0; }
+html.ark-doc.ops-doc .ops__sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: clamp(10px, 1.3vh, 11.5px);
+  letter-spacing: .14em;
+  color: var(--ark-ink-3);
+  text-transform: uppercase;
+}
+html.ark-doc.ops-doc .ops__row,
+html.ark-doc.ops-doc .ops__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: clamp(24px, 3.4vh, 30px);
+  font-size: clamp(12px, 1.5vh, 13.5px);
+}
+html.ark-doc.ops-doc .ops__key,
+html.ark-doc.ops-doc .ops__rowlabel {
+  flex: 0 0 clamp(64px, 14vw, 110px);
+  color: var(--ark-ink-2);
+  font-size: clamp(11px, 1.4vh, 12.5px);
+}
+html.ark-doc.ops-doc .ops__cell {
+  min-width: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--ark-line-2);
+  border-radius: 2px;
+  background: #fff;
+}
+html.ark-doc.ops-doc .ops__desc {
+  margin: 6px 0 0;
+  font-size: clamp(11.5px, 1.45vh, 13px);
+  line-height: 1.65;
+  color: var(--ark-ink-2);
+}
+html.ark-doc.ops-doc .ops__skill,
+html.ark-doc.ops-doc .ops__module,
+html.ark-doc.ops-doc .ops__banner {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ark-line-2);
+  border-left: 3px solid var(--ark-accent);
+  border-radius: 2px;
+  background: #fff;
+}
+html.ark-doc.ops-doc .ops__hero {
+  display: flex;
+  gap: var(--ark-gap);
+  align-items: flex-start;
+  margin: 0 0 var(--ark-gap);
+}
+html.ark-doc.ops-doc .ops__illust {
+  flex: 0 0 clamp(84px, 18vh, 150px);
+  background: #f2f4f5;
+  border: 1px solid var(--ark-line-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+html.ark-doc.ops-doc .ops__illust img { display: block; width: 100%; height: auto; }
+html.ark-doc.ops-doc .ops__illust--none { min-height: 84px; }
+html.ark-doc.ops-doc .ops__hero-text { min-width: 0; flex: 1 1 auto; }
+html.ark-doc.ops-doc .ops__rarity { color: var(--ark-amber); letter-spacing: .1em; }
+html.ark-doc.ops-doc .ops__grid { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+html.ark-doc.ops-doc .ops__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+html.ark-doc.ops-doc .ops__modtag,
+html.ark-doc.ops-doc .ops__pottag,
+html.ark-doc.ops-doc .ops__flag {
+  padding: 1px 7px;
+  border: 1px solid var(--ark-line);
+  border-radius: 2px;
+  font-size: clamp(10px, 1.3vh, 11.5px);
+  color: var(--ark-ink-2);
+  background: #fff;
+}
+html.ark-doc.ops-doc .ops__modtag--special { border-color: var(--ark-amber); color: #a06d00; }
+
+/* 竖屏：工具栏两行、列表变横向卡片条、详情占满剩余高度 */
+@media (max-aspect-ratio: 1/1) {
+  html.ark-doc.ops-doc .ops {
+    height: calc(100svh - clamp(34px, 5vh, 44px));
+    padding: 8px;
+    gap: 8px;
+  }
+  html.ark-doc.ops-doc .ops__headmain h1 { font-size: 17px; }
+  html.ark-doc.ops-doc .ops__search { width: 100%; }
+  html.ark-doc.ops-doc .ops__bar-row--search { flex: 1 1 100%; }
+  html.ark-doc.ops-doc .ops__layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  html.ark-doc.ops-doc .ops__list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px;
+    max-height: 62px;
+  }
+  html.ark-doc.ops-doc .ops__item {
+    flex: 0 0 auto;
+    border-left-width: 1px;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  html.ark-doc.ops-doc .ops__item[aria-selected="true"],
+  html.ark-doc.ops-doc .ops__item.is-on { border-left-color: transparent; border-bottom-color: var(--ark-accent); }
+}
+
+/* ---- 3. 设置弹层（.sandbox-settings，由 sandbox/js/ui/settings.js 生成）--- */
+html.ark-doc .sandbox-settings,
+html.sb-doc .sandbox-settings {
+  width: min(92vw, 560px);
+  max-height: min(86svh, 720px);
+  padding: 0;
+  border: 1px solid var(--ark-line, #c9d0d2);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--ark-ink, #22282a);
+  box-shadow: 0 18px 48px rgba(16, 24, 28, .35);
+  overflow: hidden;
+}
+html.ark-doc .sandbox-settings::backdrop,
+html.sb-doc .sandbox-settings::backdrop { background: rgba(14, 20, 24, .55); backdrop-filter: blur(2px); }
+html.ark-doc .sandbox-settings .saves__head,
+html.sb-doc .sandbox-settings .saves__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 12px clamp(12px, 2.2vh, 20px);
+  border-bottom: 1px solid var(--ark-line-2, #dfe4e5);
+  background: #fff;
+}
+html.ark-doc .sandbox-settings .saves__head h2,
+html.sb-doc .sandbox-settings .saves__head h2 {
+  margin: 0;
+  font-size: clamp(14px, 2.1vh, 18px);
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+html.ark-doc .sandbox-settings .menu__button,
+html.sb-doc .sandbox-settings .menu__button {
+  height: clamp(26px, 3.6vh, 32px);
+  padding: 0 10px;
+  font-size: clamp(11px, 1.45vh, 13px);
+  border: 1px solid var(--ark-line, #c9d0d2);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ark-ink, #22282a);
+  cursor: pointer;
+}
+html.ark-doc .sandbox-settings .menu__button--primary,
+html.sb-doc .sandbox-settings .menu__button--primary {
+  background: var(--ark-accent, #00a2c8);
+  border-color: var(--ark-accent, #00a2c8);
+  color: #fff;
+  font-weight: 700;
+}
+html.ark-doc .sandbox-settings .settings__sections,
+html.sb-doc .sandbox-settings .settings__sections {
+  max-height: calc(min(86svh, 720px) - 108px);
+  overflow-y: auto;
+  padding: 0 clamp(12px, 2.2vh, 20px) 8px;
+}
+html.ark-doc .sandbox-settings .settings__row,
+html.sb-doc .sandbox-settings .settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: clamp(38px, 5.2vh, 48px);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ark-line-2, #dfe4e5);
+  font-size: clamp(12px, 1.55vh, 13.5px);
+}
+html.ark-doc .sandbox-settings .settings__row:last-child,
+html.sb-doc .sandbox-settings .settings__row:last-child { border-bottom: 0; }
+html.ark-doc .sandbox-settings .settings__key,
+html.sb-doc .sandbox-settings .settings__key {
+  flex: 0 0 auto;
+  font-size: clamp(12px, 1.55vh, 13.5px);
+  color: var(--ark-ink, #22282a);
+}
+html.ark-doc .sandbox-settings .settings__hint,
+html.sb-doc .sandbox-settings .settings__hint { font-size: clamp(10px, 1.3vh, 11.5px); color: #8b9599; }
+html.ark-doc .sandbox-settings input[type="range"],
+html.sb-doc .sandbox-settings input[type="range"] { width: min(46vw, 200px); accent-color: var(--ark-accent, #00a2c8); }
+html.ark-doc .sandbox-settings select,
+html.sb-doc .sandbox-settings select {
+  height: clamp(26px, 3.6vh, 32px);
+  padding: 0 8px;
+  font-size: clamp(11px, 1.45vh, 13px);
+  border: 1px solid var(--ark-line, #c9d0d2);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ark-ink, #22282a);
+}
+html.ark-doc .sandbox-settings .settings__row:first-child .settings__key,
+html.sb-doc .sandbox-settings .settings__row:first-child .settings__key { font-weight: 800; letter-spacing: .12em; }
+
+/* ---- 4. 帮助页 ---------------------------------------------------------- */
+html.ark-doc.help-doc .help,
+html.ark-doc.help-doc .help__grid { max-width: 1100px; margin: 0 auto; }
+html.ark-doc.help-doc .help__card,
+html.ark-doc.help-doc .help__item {
+  padding: var(--ark-gap);
+  border: 1px solid var(--ark-line-2);
+  border-radius: 3px;
+  background: #fff;
+  font-size: clamp(12px, 1.5vh, 13.5px);
+}
+
+/* ---- 3b. 横屏设置弹层：宽屏铺开两列，压缩纵向高度 ---- */
+@media (min-aspect-ratio: 1/1) {
+  html.ark-doc .sandbox-settings,
+  html.sb-doc .sandbox-settings {
+    width: min(86vw, 760px);
+    max-height: calc(100svh - 16px);
+  }
+  html.ark-doc .sandbox-settings .settings__sections,
+  html.sb-doc .sandbox-settings .settings__sections {
+    display: block;
+    column-count: 2;
+    column-gap: clamp(14px, 2.4vw, 26px);
+    max-height: calc(100svh - 120px);
+  }
+  /* 每个分节整块放进一列，别把同一节的条目切成两半 */
+  html.ark-doc .sandbox-settings .settings__section,
+  html.sb-doc .sandbox-settings .settings__section {
+    break-inside: avoid;
+    align-self: start;
+  }
+  html.ark-doc .sandbox-settings .settings__row,
+  html.sb-doc .sandbox-settings .settings__row { min-height: 32px; }
+  html.ark-doc .sandbox-settings .settings__row,
+  html.sb-doc .sandbox-settings .settings__row {
+    min-height: 34px;
+    padding: 4px 0;
+  }
+  html.ark-doc .sandbox-settings .settings__row,
+  html.sb-doc .sandbox-settings .settings__row { break-inside: avoid; }
+  html.ark-doc .sandbox-settings input[type="range"],
+  html.sb-doc .sandbox-settings input[type="range"] { width: min(18vw, 150px); }
+}
+
+/* ---- 5. 关卡制作器：补全高度链 -------------------------------------------
+   studio/level.css 用 `html:has(body.lv)` 给根元素定高，:has() 在部分 WebView 上
+   不可用，根高度塌掉后 .lv-body 的 1fr 行就撑不开 —— 表现就是「页面只画出一小块」。
+   这里不依赖 :has，直接把 html/body/#level 的高度写死。 */
+html.level-doc, html.level-doc body.studio.lv { height: 100%; min-height: 0; overflow: hidden; }
+html.level-doc #level { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+html.level-doc #level > .lv-body { flex: 1 1 auto; min-height: 0; }
+html.level-doc #level .lv-main,
+html.level-doc #level .lv-canvas { min-height: 0; }
+
+/* 横屏：把右侧面板收窄一档，画布区优先 */
+@media (min-aspect-ratio: 1/1) {
+  html.level-doc .lv-body { padding: 8px 10px; gap: 8px; }
+  html.level-doc #level .lv-side { width: clamp(190px, 26vw, 300px); }
+}
+
+/* 竖屏：侧栏改为底部抽屉式，避免被压成一条 */
+@media (max-aspect-ratio: 1/1) {
+  html.level-doc .lv-body { padding: 8px; gap: 6px; }
+  html.level-doc #level .lv-side { width: auto; max-height: 42svh; }
+}
+
+/* 关卡制作器真实类名修正：画布最小高度 420px 在竖屏会把侧栏顶出屏幕 */
+html.level-doc #level .lv-stage { min-height: 0; }
+html.level-doc #level .lv-canvas-wrap { min-height: 0; }
+html.level-doc #level .lv-side { min-height: 0; overflow-y: auto; }
+@media (max-aspect-ratio: 1/1) {
+  html.level-doc #level .lv-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) minmax(0, 38svh); }
+  html.level-doc #level .lv-side { width: auto; flex: none; }
+}
+
+/* ---- 6. 游玩页：只补布局，不改配色（战斗界面本来就是深色）------------- */
+html.play-doc, html.play-doc body { height: 100%; min-height: 0; overflow: hidden; }
+html.play-doc #app { height: 100%; min-height: 0; }
+html.play-doc .operation-screen { max-height: 100svh; }
+@media (max-aspect-ratio: 1/1) {
+  html.play-doc .operation-screen { overflow-y: auto; }
+  html.play-doc .operation-screen > * { flex: 0 0 auto; }
+}
+
+/* ==========================================================================
+   干员详情：按 PRTS 风格的深色版式重做（截图 1:1 对齐）
+   顶部是筛选条（职业 / 稀有度 / 搜索 / 排序 / 视图切换），下面是头像网格。
+   ========================================================================== */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc { background: #15181c; color: #dde3e7; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc body { background: #15181c; }
+
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .page__topbar {
+  background: #1b1f24;
+  border-bottom: 1px solid #333a41;
+  color: #dde3e7;
+}
+
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc main.ops { padding: 10px clamp(10px, 2.2vw, 18px) 16px; gap: 10px; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__head { display: flex; align-items: center; gap: 12px; padding: 0 0 6px; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__head h1 { margin: 0; font-size: clamp(15px, 2vh, 18px); font-weight: 700; letter-spacing: .02em; }
+
+/* 筛选条：分组的胶囊按钮 */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border: 1px solid #333a41;
+  border-radius: 3px;
+  background: #1b1f24;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__bar select,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__bar input,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc #ops-search {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #3c444c;
+  border-radius: 3px;
+  background: #12161a;
+  color: #dde3e7;
+  font-size: 12.5px;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc #ops-search { flex: 1 1 180px; min-width: 120px; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__count { color: #8b959c; font-size: 12px; }
+
+/* 列表：头像网格 */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-height: 0; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list > li { margin: 0; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  border: 1px solid #333a41;
+  border-radius: 3px;
+  background: #1b1f24;
+  color: #dde3e7;
+  overflow: hidden;
+  cursor: pointer;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item:hover { border-color: #4a8f9e; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item.is-on { border-color: #21c4d8; box-shadow: inset 0 0 0 1px #21c4d8; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item__ava {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #22272d;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item__ava--none { background: linear-gradient(135deg, #262c33, #1a1f24); }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px 5px;
+  min-width: 0;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item__name {
+  font-size: 11.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #8b959c;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__item__sub { width: 12px; height: 12px; opacity: .8; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__flag {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: #21c4d8;
+  color: #08222a;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* 详情面板：深色卡片 */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail {
+  border: 1px solid #333a41;
+  border-radius: 3px;
+  background: #1b1f24;
+  padding: 10px 12px;
+  overflow-y: auto;
+  min-height: 0;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__sec { border: 0; border-top: 1px solid #2b3238; border-radius: 0; background: none; padding: 8px 0 2px; margin: 0; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__sec:first-child { border-top: 0; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__sec-head h2, html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__sec-head h3 { margin: 0; font-size: 13px; color: #21c4d8; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__mini {
+  height: 24px; padding: 0 8px; border: 1px solid #3c444c; border-radius: 3px;
+  background: #12161a; color: #b9c2c8; font-size: 11px;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__hint { color: #8b959c; font-size: 11.5px; }
+
+/* 横屏：左列表 + 右详情 */
+@media (min-aspect-ratio: 1/1) {
+  html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__layout { grid-template-columns: minmax(0, 1fr) minmax(320px, 40%); }
+  html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+}
+
+/* ---- 设置弹层深色版（与干员详情同一套色板，紧凑行高、触控友好）-------- */
+html.ark-doc .sandbox-settings,
+html.sb-doc .sandbox-settings {
+  background: #1b1f24;
+  border-color: #333a41;
+  color: #dde3e7;
+}
+html.ark-doc .sandbox-settings .saves__head,
+html.sb-doc .sandbox-settings .saves__head {
+  border-bottom: 1px solid #2b3238;
+  background: #1b1f24;
+}
+html.ark-doc .sandbox-settings .saves__head h2,
+html.sb-doc .sandbox-settings .saves__head h2 { color: #dde3e7; }
+html.ark-doc .sandbox-settings .settings__row,
+html.sb-doc .sandbox-settings .settings__row {
+  border-bottom-color: #2b3238;
+  color: #dde3e7;
+}
+html.ark-doc .sandbox-settings .settings__key,
+html.sb-doc .sandbox-settings .settings__key { color: #dde3e7; }
+html.ark-doc .sandbox-settings .settings__hint,
+html.sb-doc .sandbox-settings .settings__hint { color: #8b959c; }
+html.ark-doc .sandbox-settings input[type="range"],
+html.sb-doc .sandbox-settings input[type="range"] { accent-color: #21c4d8; }
+html.ark-doc .sandbox-settings select,
+html.sb-doc .sandbox-settings select {
+  background: #12161a;
+  border-color: #3c444c;
+  color: #dde3e7;
+}
+html.ark-doc .sandbox-settings .menu__button,
+html.sb-doc .sandbox-settings .menu__button {
+  background: #12161a;
+  border-color: #3c444c;
+  color: #dde3e7;
+}
+html.ark-doc .sandbox-settings .menu__button--primary,
+html.sb-doc .sandbox-settings .menu__button--primary {
+  background: #21c4d8;
+  border-color: #21c4d8;
+  color: #08222a;
+}
+
+/* ---- 干员详情：整页可滚动 + 详情面板信息不再挤成一坨 ---------------- */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc, html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc body {
+  height: auto;
+  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc main.ops { height: auto; min-height: 0; display: flex; flex-direction: column; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__layout { display: block; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+  overflow: visible;
+  max-height: none;
+  min-height: 0;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail {
+  margin-top: 10px;
+  max-height: none;
+  overflow: visible;
+}
+
+/* 详情面板内部的字段/行：给足行高与间距，别叠在一起 */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__row,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__cell,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 0;
+  border-bottom: 1px solid #2b3238;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__row:last-child,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__field:last-child { border-bottom: 0; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__field { flex-direction: column; align-items: stretch; gap: 2px; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__field label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  color: #b9c2c8;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 10px;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__origin,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__now { font-size: 10.5px; color: #8b959c; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail .ops__key { font-size: 10px; color: #6f7a82; font-style: normal; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail input,
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail select {
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #3c444c;
+  border-radius: 3px;
+  background: #12161a;
+  color: #dde3e7;
+  font-size: 12px;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail img { max-width: 100%; height: auto; }
+
+@media (min-aspect-ratio: 1/1) {
+  html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 40%); gap: 10px; height: calc(100svh - 60px); }
+  html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list { overflow-y: auto; max-height: none; }
+  html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail { margin-top: 0; overflow-y: auto; }
+}
+
+/* ---- 干员详情：把被压掉的页头留白与滚动还原（2026-11-05 真机核对后） ---- */
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc, html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc body.menu-screen {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+  background: #15181c;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc main.ops {
+  /* menu.css 的 .page__topbar 是 position:fixed 钉在左上，标题必须自己让开这一条 */
+  padding-top: calc(56px + var(--sa-t, 0px)) !important;
+  padding-bottom: calc(40px + var(--sa-b, 0px)) !important;
+  height: auto !important;
+  width: 100%;
+  max-width: none;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__layout { display: block !important; height: auto !important; min-height: 0 !important; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list {
+  display: grid !important;
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__list > li { display: block !important; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__detail { display: block !important; height: auto !important; max-height: none !important; overflow: visible !important; }
+html.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc.ops-doc .ops__head h1 { margin: 0; }

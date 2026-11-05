@@ -14,39 +14,44 @@ export const PROFESSION_CN = {
 
 /**
  * 子职业（分支）中文名 —— 官方 PRTS 的叫法。
- * 71 个，覆盖当前数据里全部 subProfessionId。
+ * 72 个，覆盖当前数据里全部 subProfessionId（2026-11 按 data/chess.json 与
+ * data/operator-library.json 自带的 subProfessionName 逐条核对，那两份是官方表导出的，
+ * 是唯一可信的中文名来源；旧的这份手写表有 33 处写错、3 处漏，已全部按官方改正）。
+ *
+ * 注意 supportiveranger 与 guerrilla 是两个不同 id，但官方中文都叫「游击手」
+ * （数据里现在只有 supportiveranger 在用，guerrilla 已无干员）。
  */
 export const SUB_PROFESSION_CN = {
   // 先锋
-  pioneer: '尖兵', charger: '冲锋手', skypuller: '执旗手', tactician: '战术家',
-  bearer: '策士', agent: '情报官', pioneer2: '尖兵',
+  charger: '冲锋手', pioneer: '尖兵', agent: '情报官', tactician: '战术家',
+  bearer: '执旗手', counsellor: '策士',
   // 近卫
-  fearless: '强攻手', lord: '领主', centurion: '重剑手', sword: '剑豪',
-  artsfghter: '术战者', crusher: '撼地者', hammer: '重锤手', duelist: '决斗者',
-  instructor: '教官', fighter: '斗士', guard: '守卫', musha: '武者',
-  reaper: '收割者', unyield: '不屈者', primguard: '本源近卫',
-  // 狙击
-  fastshot: '速射手', aoesniper: '炮手', closerange: '近距射手', longrange: '远距射手',
-  siegesniper: '攻城手', hunter: '猎手', loopshooter: '回环射手', bombarder: '投掷手',
-  skybreaker: '散射手', traper: '陷阱师', underminer: '挖掘工',
-  // 术师
-  corecaster: '中坚术师', splashcaster: '扩散术师', blastcaster: '轰击术师',
-  chain: '链术师', funnel: '阵法术师', mystic: '秘术师', primcaster: '本源术师',
-  soulcaster: '驭械术师', ritualist: '塑灵术师',
-  // 医疗
-  physician: '医师', blessing: '群愈师', ringhealer: '环愈师', chainhealer: '链愈师',
-  wandermedic: '行医', incantationmedic: '咒愈师',
+  mercenary: '佣兵', sword: '剑豪', centurion: '强攻手', hammer: '撼地者',
+  reaper: '收割者', instructor: '教官', fighter: '斗士', fearless: '无畏者',
+  primguard: '本源近卫', artsfghter: '术战者', musha: '武者', librator: '解放者',
+  crusher: '重剑手', lord: '领主',
   // 重装
-  protector: '铁卫', guardian: '守护者', artsprotector: '术铁卫', shotprotector: '哨卫',
-  fortress: '要塞', primprotector: '本源铁卫',
+  unyield: '不屈者', duelist: '决战者', shotprotector: '哨戒铁卫', guardian: '守护者',
+  primprotector: '本源铁卫', fortress: '要塞', protector: '铁卫', artsprotector: '驭法铁卫',
+  // 狙击
+  loopshooter: '回环射手', bombarder: '投掷手', siegesniper: '攻城手', reaperrange: '散射手',
+  aoesniper: '炮手', hunter: '猎手', longrange: '神射手', skybreaker: '裂空炮手',
+  fastshot: '速射手', closerange: '重射手',
+  // 术师
+  corecaster: '中坚术师', soulcaster: '塑灵术师', splashcaster: '扩散术师', primcaster: '本源术师',
+  mystic: '秘术师', blastcaster: '轰击术师', chain: '链术师', phalanx: '阵法术师',
+  funnel: '驭械术师',
+  // 医疗
+  physician: '医师', incantationmedic: '咒愈师', watchman: '守望者', healer: '疗养师',
+  ringhealer: '群愈师', wandermedic: '行医', chainhealer: '链愈师',
   // 辅助
-  bard: '吟游者', slower: '削弱者', summoner: '召唤师', craftsman: '工匠',
-  alchemist: '炼金师', counsellor: '谋士', geek: '技术人员', guerrilla: '游击手',
+  slower: '凝滞师', underminer: '削弱者', summoner: '召唤师', bard: '吟游者',
+  craftsman: '工匠', ritualist: '巫役', blessing: '护佑者', guerrilla: '游击手',
+  supportiveranger: '游击手',
   // 特种
-  executor: '处决者', pusher: '推击手', hookmaster: '钩索师', stalker: '伏击客',
-  gecko: '傀儡师', dollkeeper: '人偶师', skywalker: '行空使', reaperrange: '荒域客',
-  merchant: '行商', loopshooter2: '回环射手', supportiveranger: '支援射手',
-  watchman: '巡空者', mercenary: '佣兵', dispatcher: '调度者',
+  stalker: '伏击客', dollkeeper: '傀儡师', executor: '处决者', skywalker: '巡空者',
+  geek: '怪杰', pusher: '推击手', alchemist: '炼金师', merchant: '行商',
+  dispatcher: '调度者', hookmaster: '钩索师', traper: '陷阱师',
 };
 
 /** 模组类型代号（CCR-Y 这种）→ 中文说明。取不到的显示代号。 */
@@ -54,7 +59,33 @@ export const MODULE_TYPE_CN = {
   CCR: '术师', MAR: '近卫', SUP: '辅助', TAN: '重装', SPE: '特种',
   SNO: '狙击', MED: '医疗', PIO: '先锋', EXE: '处决', UPR: '成长',
   AMB: '特种', INS: '近卫', PRP: '重装',
+  // 特限证章三族：官方 uniequip_table 里 typeName2 为 A/B、isSpecialEquip = true。
+  // 它们不是按职业分的，只在集成战略 / 生息演算 / 界园志异这些模式里出现，
+  // 所以不能走「取前缀查职业」那条路，必须单独列出来。
+  ISW: '集成战略', RA: '生息演算', SO: '界园志异',
 };
+
+/**
+ * 模组的官方类型前缀（'MAR-X' → 'MAR'）——与 {@link moduleTypeCn} 共用的解析。
+ */
+export function modulePrefix(typeName) {
+  const m = /^([A-Z]{2,4})/.exec(String(typeName || ''));
+  return m ? m[1] : '';
+}
+
+/**
+ * 是不是特限模组（特限证章）。
+ *
+ * 判据取两头，缺一不可：
+ *   ① 数据侧的 `isSpecial`（本地从 uniequip_table 的 isSpecialEquip 抄进来）；
+ *   ② 类型前缀落在 ISW / RA / SO 三族里。
+ * 老数据只有 ②，所以两边都要认。
+ */
+export function isSpecialModule(mod) {
+  if (!mod || typeof mod !== 'object') return false;
+  if (mod.isSpecial === true) return true;
+  return ['ISW', 'RA', 'SO'].includes(modulePrefix(mod.typeName));
+}
 
 /**
  * 技能里常见的 bb 键名 → 中文（用于把 "atk"/"duration"/"cost" 这类词显示成人话）。

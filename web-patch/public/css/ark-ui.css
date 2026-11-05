@@ -1,0 +1,236 @@
+/* ============================================================================
+ * ark-ui.css —— 全站统一界面层（2026-11-04 重做）
+ *
+ * 目标：主界面、沙盒、游玩、关卡、干员、帮助 六个页面用同一套设计语言。
+ * 参照物是明日方舟游戏内「日间主界面」：浅灰白底、白色直角块、青色强调块、
+ * 细线分隔、大号粗体中文 + 等宽小号英文编号、红底信息条。横屏优先。
+ *
+ * 【为什么新建文件而不是改旧的那些】
+ *   sandbox/ 下的 menu.css、menu-themes.css、menu-layout.css、menu-redesign.css、
+ *   panel-redesign.css、picker-redesign.css、detail-redesign.css、hud-theme.css
+ *   是历次局部重做叠出来的，互相用「重复类名抬特异性」对打（最高的已经到 0,6,x）。
+ *   继续往那堆里加规则只会让特异性失控。这里用**全新的类名前缀**（ark-*）重画，
+ *   旧文件里没被用到的规则自然失效，不必逐个去压。
+ *
+ * 【硬规矩】
+ *  1. 尺寸/字号一律 px 或 clamp(vh…)：本项目 1rem 在手机横屏只有 33px。
+ *  2. 横屏以「高度」为基准（手机横屏 h≈1080 的 CSS 像素约 360–420），
+ *     所以纵向尺寸用 vh / clamp，横向用 vw 或固定 px。
+ *  3. 不写 !important：靠文件顺序（本文件最后加载）+ 前缀独特性取胜。
+ * ========================================================================== */
+
+/* ---- 0. 设计 token ------------------------------------------------------ */
+:root {
+  /* 底色与面板 */
+  --ark-bg: #e9ebeb;
+  --ark-bg-2: #dfe3e4;
+  --ark-bg-3: #f3f5f5;
+  --ark-panel: #ffffff;
+  --ark-panel-2: #f7f8f8;
+  --ark-panel-3: #eef1f1;
+  /* 文字 */
+  --ark-ink: #22282a;
+  --ark-ink-2: #59636a;
+  --ark-ink-3: #8b9599;
+  --ark-ink-invert: #ffffff;
+  /* 线 */
+  --ark-line: #c9d0d2;
+  --ark-line-2: #dfe4e5;
+  --ark-line-3: #eef1f1;
+  /* 强调 */
+  --ark-accent: #00a2c8;
+  --ark-accent-2: #0086a8;
+  --ark-accent-3: #e3f5fa;
+  --ark-red: #e2392c;
+  --ark-red-2: #b8251c;
+  --ark-amber: #f0a92b;
+  --ark-blue: #0d6f9e;
+  --ark-green: #2f9e6e;
+  /* 阴影：只用一层很浅的，P2 本身几乎不用阴影 */
+  --ark-shadow: 0 2px 10px #1a2a3014;
+  --ark-shadow-2: 0 6px 20px #1a2a3018;
+  /* 尺寸节奏（横屏高度驱动） */
+  --ark-gap: clamp(6px, 1.2vh, 12px);
+  --ark-pad: clamp(10px, 2vh, 20px);
+  --ark-h: clamp(26px, 4.2vh, 40px);
+  --ark-t-xs: clamp(10px, 1.45vh, 12px);
+  --ark-t-sm: clamp(11px, 1.7vh, 14px);
+  --ark-t-md: clamp(13px, 2.1vh, 16px);
+  --ark-t-lg: clamp(16px, 2.9vh, 24px);
+  --ark-t-xl: clamp(22px, 4.4vh, 40px);
+  --ark-t-xxl: clamp(30px, 6.6vh, 62px);
+  /* 字体 */
+  --ark-font: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', system-ui, sans-serif;
+  --ark-mono: 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
+}
+
+/* ---- 1. 文档底色 -------------------------------------------------------- */
+html.ark-doc,
+html.ark-doc body {
+  background: var(--ark-bg);
+  color: var(--ark-ink);
+  font-family: var(--ark-font);
+}
+html.ark-doc { -webkit-tap-highlight-color: transparent; }
+
+/* ---- 2. 顶部导航（terminal-shell.js 注入的 .terminal-chrome）----------- */
+/* 统一成浅色条：白底、细下边框、黑色字、青色当前项。 */
+html body .terminal-chrome {
+  color: var(--ark-ink);
+  font: var(--ark-t-sm)/1.35 var(--ark-font);
+}
+html body .terminal-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ark-gap);
+  height: auto;
+  padding: calc(var(--ark-pad) * .7) var(--ark-pad);
+  background: #e9ebebf2;
+  border-bottom: 1px solid var(--ark-line-2);
+  backdrop-filter: blur(6px);
+}
+html body .terminal-history { display: flex; align-items: center; gap: 6px; }
+html body .terminal-history a,
+html body .terminal-history button,
+html body .terminal-options button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ark-h);
+  padding: 0 12px;
+  border: 1px solid var(--ark-line);
+  border-radius: 0;
+  background: var(--ark-panel);
+  box-shadow: none;
+  color: var(--ark-ink);
+  font: var(--ark-t-sm)/1 var(--ark-font);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 120ms linear, color 120ms linear, background 120ms linear;
+}
+html body .terminal-history a:hover,
+html body .terminal-history button:hover,
+html body .terminal-options button:hover {
+  color: var(--ark-accent);
+  border-color: var(--ark-accent);
+  background: var(--ark-panel);
+}
+html body .terminal-history :active,
+html body .terminal-options button:active { transform: none; background: var(--ark-accent-3); }
+html body .terminal-tabs { display: flex; align-items: stretch; gap: 2px; }
+html body .terminal-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--ark-h);
+  width: clamp(96px, 13vw, 160px);
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ark-ink-2);
+  font: var(--ark-t-sm)/1 var(--ark-font);
+  text-decoration: none;
+  transition: color 120ms linear, background 120ms linear, border-color 120ms linear;
+}
+html body .terminal-tab svg { width: 18px; height: 18px; flex: none; }
+html body .terminal-tab:hover { color: var(--ark-ink); background: #ffffff99; }
+html body .terminal-tab.is-current {
+  color: var(--ark-ink);
+  font-weight: 700;
+  background: var(--ark-panel);
+  border-color: var(--ark-line-2);
+  border-bottom-color: var(--ark-accent);
+}
+html body .terminal-header__end {
+  flex: 1;
+  padding: 0;
+  text-align: right;
+  color: var(--ark-ink-3);
+  font: var(--ark-t-xs) var(--ark-mono);
+  letter-spacing: .18em;
+}
+html body .terminal-options {
+  position: fixed;
+  right: var(--ark-pad);
+  bottom: calc(var(--ark-pad) * .5);
+  z-index: 140;
+  display: flex;
+  gap: 6px;
+}
+html body .terminal-options button { min-height: clamp(24px, 3.6vh, 34px); padding: 0 10px; font-size: var(--ark-t-xs); }
+html body .terminal-options [aria-pressed='true'] { color: var(--ark-accent); border-color: var(--ark-accent); }
+
+/* 粒子与幕布：浅色页面上不需要 */
+html body .terminal-particles { display: none; }
+html body .terminal-editbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #f0c48a;
+  background: #fff7e9;
+  color: #7a4b12;
+  font-size: var(--ark-t-xs);
+}
+
+/* ---- 3. 通用元件 -------------------------------------------------------- */
+.ark-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ark-h);
+  padding: 0 14px;
+  border: 1px solid var(--ark-line);
+  border-radius: 0;
+  background: var(--ark-panel);
+  color: var(--ark-ink);
+  font: var(--ark-t-sm)/1 var(--ark-font);
+  cursor: pointer;
+}
+.ark-btn:hover { border-color: var(--ark-accent); color: var(--ark-accent); }
+.ark-btn--primary { background: var(--ark-accent); border-color: var(--ark-accent-2); color: #fff; }
+.ark-btn--primary:hover { background: var(--ark-accent-2); border-color: var(--ark-accent-2); color: #fff; }
+.ark-btn--danger { background: var(--ark-red); border-color: var(--ark-red-2); color: #fff; }
+.ark-btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+.ark-field {
+  min-height: var(--ark-h);
+  padding: 0 10px;
+  border: 1px solid var(--ark-line);
+  border-radius: 0;
+  background: var(--ark-panel);
+  color: var(--ark-ink);
+  font: var(--ark-t-sm)/1.2 var(--ark-font);
+}
+.ark-field:focus { outline: none; border-color: var(--ark-accent); box-shadow: 0 0 0 2px var(--ark-accent-3); }
+
+.ark-eyebrow {
+  color: var(--ark-ink-3);
+  font: var(--ark-t-xs)/1 var(--ark-mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+/* ---- 4. 竖屏降级 ------------------------------------------------------- */
+@media (max-aspect-ratio: 1/1) {
+  :root {
+    --ark-t-xs: 11px;
+    --ark-t-sm: 13px;
+    --ark-t-md: 15px;
+    --ark-t-lg: 20px;
+    --ark-t-xl: 26px;
+    --ark-t-xxl: 34px;
+    --ark-pad: 14px;
+    --ark-gap: 10px;
+    --ark-h: 36px;
+  }
+  html body .terminal-header { flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
+  html body .terminal-tab { width: auto; flex: 1; min-width: 0; font-size: 11px; flex-direction: column; gap: 2px; }
+  html body .terminal-tab svg { width: 16px; height: 16px; }
+  html body .terminal-header__end { display: none; }
+  html body .terminal-options { right: 12px; bottom: 12px; }
+}

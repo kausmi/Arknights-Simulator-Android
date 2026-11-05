@@ -213,6 +213,8 @@ export function mount(root, act) {
       case 'unit-range': e.stopPropagation(); act.onUnitRange?.(); break;
       case 'unit-alt': act.onUnitAlt?.(); break;
       case 'unit-equipment': act.onEquipment?.(); break;
+      // 多形态干员（阿米娅升变）：换成另一份 chessId，走 controller.onPersona
+      case 'unit-persona': e.stopPropagation(); act.onPersona?.(btn.dataset.id); break;
       default: break;
     }
   });

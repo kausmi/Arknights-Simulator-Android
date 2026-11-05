@@ -1,0 +1,366 @@
+/* ============================================================================
+ * ark-pick.css — 沙盒「模式选择」页（进入战场之前的那一屏）
+ * ----------------------------------------------------------------------------
+ * 这一屏以前是深色终端风的 header + 浅色内容，两套语言硬拼在一起：header 固定
+ * 90px 高、标签只有 46px 宽，中文被挤成竖排压在内容上，右下角的「音乐 / 全局设置」
+ * 又浮在存档卡片上面。
+ *
+ * 这里把这一屏拉回和主界面同一套语言（public/css/ark-ui.css 的 token）：
+ *   · header 白底细线，一行放下「返回 · 主菜单 · 五个工作区标签」，放不下就横向滚
+ *   · 内容区从 header 下沿开始，自己滚动，不再被盖住
+ *   · 右下角的两个浮动按钮改成浅色描边，并给内容留出底部空间
+ *
+ * 只在 html.sb-pick（模式选择）生效，战斗界面（html.sb-doc 但非 sb-pick）不受影响。
+ * ==========================================================================*/
+
+html.sb-doc.sb-pick {
+  --pick-head: 46px;
+  background: var(--ark-bg, #e9ebeb);
+  color: var(--ark-ink, #22282a);
+}
+
+/* ---- 1. 顶部终端栏 ------------------------------------------------------ */
+/* 注意：sandbox/menu-layout.css:35 用
+     :root[data-menu-theme] body:not([data-terminal-mode='battle']) .terminal-chrome
+   给 .terminal-header 写死了 height:100px / padding:22px 4vw 0 / 黑底，
+   展开后特异性 (0,5,1)，比这里任何「html.sb-pick ...」写法都高。那一套是旧的
+   「菜单主题」皮肤，正是让这一页顶栏变成黑底方块按钮的来源。所以这一段的关键
+   布局属性用 !important 压过去，作用域仍只限 html.sb-pick（模式选择页）。 */
+html.sb-doc.sb-pick .terminal-chrome {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 130;
+  pointer-events: none;
+  color: var(--ark-ink, #22282a);
+  font: 12px/1.2 var(--font-ui, system-ui, sans-serif);
+}
+
+html.sb-doc.sb-pick .terminal-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  height: var(--pick-head) !important;
+  min-height: 0 !important;
+  max-height: var(--pick-head) !important;
+  flex-wrap: nowrap !important;
+  padding: 0 10px !important;
+  background: #fff !important;
+  border-bottom: 1px solid var(--ark-line, #c9d0d2) !important;
+  box-shadow: none !important;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* 返回 / 主菜单 */
+html.sb-doc.sb-pick .terminal-history {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: none !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+}
+html.sb-doc.sb-pick .terminal-history button,
+html.sb-doc.sb-pick .terminal-history a {
+  height: 28px !important;
+  min-height: 0 !important;
+  padding: 0 10px !important;
+  display: inline-flex;
+  align-items: center;
+  background: #fff !important;
+  border: 1px solid var(--ark-line, #c9d0d2) !important;
+  box-shadow: none !important;
+  color: var(--ark-ink-2, #59636a) !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  text-decoration: none;
+  cursor: pointer;
+}
+html.sb-doc.sb-pick .terminal-history button:hover,
+html.sb-doc.sb-pick .terminal-history a:hover {
+  color: var(--ark-accent, #00a2c8) !important;
+  border-color: var(--ark-accent, #00a2c8) !important;
+}
+
+/* 五个工作区标签：单行不折行，放不下横向滚动 */
+html.sb-doc.sb-pick .terminal-tabs {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+html.sb-doc.sb-pick .terminal-tabs::-webkit-scrollbar { display: none; }
+
+html.sb-doc.sb-pick .terminal-tab {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px !important;
+  padding: 0 10px !important;
+  white-space: nowrap;
+  color: var(--ark-ink-2, #59636a) !important;
+  font-size: 12.5px !important;
+  text-decoration: none;
+  border: 1px solid transparent !important;
+  border-bottom: 1px solid transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+html.sb-doc.sb-pick .terminal-tab svg { width: 14px !important; height: 14px !important; flex: none; }
+html.sb-doc.sb-pick .terminal-tab:hover {
+  color: var(--ark-ink, #22282a) !important;
+  border-color: var(--ark-line-2, #dfe4e5) !important;
+  transform: none !important;
+}
+html.sb-doc.sb-pick .terminal-tab.is-current,
+html.sb-doc.sb-pick .terminal-tab[aria-current="page"] {
+  height: 30px !important;
+  color: #fff !important;
+  background: var(--ark-accent, #00a2c8) !important;
+  border: 1px solid var(--ark-accent, #00a2c8) !important;
+  border-bottom: 1px solid var(--ark-accent, #00a2c8) !important;
+  box-shadow: none !important;
+}
+html.sb-doc.sb-pick .terminal-tab.is-current::after { display: none !important; }
+
+html.sb-doc.sb-pick .terminal-header__end {
+  flex: none;
+  padding: 0 !important;
+  color: var(--ark-ink-3, #8b9599) !important;
+  font-size: 10px !important;
+  letter-spacing: .16em;
+}
+
+/* ---- 2. 内容区：从顶栏下沿开始自己滚 ------------------------------------ */
+html.sb-doc.sb-pick .sandbox-entry {
+  position: absolute;
+  inset: var(--pick-head) 0 0 0;
+  height: auto;
+  overflow-y: auto;
+  padding: 14px 14px 72px;
+  box-sizing: border-box;
+}
+
+html.sb-doc.sb-pick .sandbox-entry .saves,
+html.sb-doc.sb-pick .sandbox-entry main {
+  margin: 0 auto;
+  max-width: 980px;
+}
+
+/* ---- 3. 右下角浮动按钮：浅色描边，不再压住卡片 -------------------------- */
+html.sb-doc.sb-pick .terminal-options {
+  position: fixed !important;
+  right: 12px !important;
+  bottom: 12px !important;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+html.sb-doc.sb-pick .terminal-options button,
+html.sb-doc.sb-pick .terminal-options a {
+  height: 30px !important;
+  min-height: 0 !important;
+  padding: 0 12px !important;
+  background: #fff !important;
+  border: 1px solid var(--ark-line, #c9d0d2) !important;
+  box-shadow: none !important;
+  color: var(--ark-ink-2, #59636a) !important;
+  font-size: 12px !important;
+  cursor: pointer;
+}
+html.sb-doc.sb-pick .terminal-options button:hover {
+  color: var(--ark-accent, #00a2c8);
+  border-color: var(--ark-accent, #00a2c8);
+}
+
+/* 模式选择页不需要粒子 / 扫描线 */
+html.sb-doc.sb-pick .terminal-particles { display: none; }
+
+/* ---- 4. 存档卡片：白底细线，和主界面的方块同一套规格 -------------------- */
+html.sb-doc.sb-pick .sandbox-entry .saves {
+  background: #fff;
+  border: 1px solid var(--ark-line-2, #dfe4e5);
+}
+html.sb-doc.sb-pick .sandbox-entry .menu__button {
+  border: 1px solid var(--ark-line, #c9d0d2);
+  background: #fff;
+  color: var(--ark-ink, #22282a);
+  font-size: 12.5px;
+}
+html.sb-doc.sb-pick .sandbox-entry .menu__button--primary,
+html.sb-doc.sb-pick .sandbox-entry .menu__button.is-primary {
+  background: var(--ark-accent, #00a2c8);
+  border-color: var(--ark-accent, #00a2c8);
+  color: #fff;
+}
+
+/* ---- 5. 竖屏：标签栏只留图标，省出横向空间 ------------------------------ */
+@media (max-aspect-ratio: 1/1) {
+  html.sb-doc.sb-pick .terminal-tab span { display: none; }
+  html.sb-doc.sb-pick .terminal-tab { padding: 0 9px; }
+  html.sb-doc.sb-pick .terminal-header__end { display: none; }
+}
+
+/* ---- 6. 卡片重排：削掉旧版留下的大片留白 -------------------------------- */
+/* 旧的 menu-layout / menu-fit 给这一屏堆了不少 margin 与固定高度，竖屏首屏
+   只能看见一张缩略图和半条存档。这里统一收紧：预览区变小图，存档列表吃掉
+   剩余高度自己滚，两块之间只留一个节奏间距。 */
+html.sb-doc.sb-pick .sandbox-entry .sandbox-archive {
+  display: flex;
+  flex-direction: column;
+  gap: 12px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: none !important;
+  border: 0 !important;
+}
+
+html.sb-doc.sb-pick .sandbox-archive__preview {
+  margin: 0 !important;
+  padding: 14px !important;
+  background: #fff !important;
+  border: 1px solid var(--ark-line-2, #dfe4e5) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__preview .menu__eyebrow {
+  margin: 0 0 6px !important;
+  font-size: 10px !important;
+  letter-spacing: .18em !important;
+  color: var(--ark-amber, #f0a92b) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__preview h1 {
+  margin: 0 0 10px !important;
+  font-size: 20px !important;
+  line-height: 1.25 !important;
+  color: var(--ark-ink, #22282a) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__preview img {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 168px !important;
+  object-fit: contain !important;
+  margin: 0 0 8px !important;
+  background: #0f1216;
+}
+html.sb-doc.sb-pick .sandbox-archive__preview p {
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  color: var(--ark-ink-2, #59636a) !important;
+}
+
+html.sb-doc.sb-pick .sandbox-archive__manage {
+  margin: 0 !important;
+  padding: 12px 14px 14px !important;
+  background: #fff !important;
+  border: 1px solid var(--ark-line-2, #dfe4e5) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 !important;
+  padding: 0 0 10px !important;
+  border-bottom: 1px solid var(--ark-line-2, #dfe4e5) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__head h2 {
+  margin: 0 !important;
+  font-size: 14px !important;
+  color: var(--ark-ink, #22282a) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .menu__button {
+  height: 32px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  background: var(--ark-accent, #00a2c8) !important;
+  border: 1px solid var(--ark-accent, #00a2c8) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__list {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px;
+  max-height: calc(100svh - 250px) !important;
+  overflow-y: auto;
+  padding: 0 !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__slot {
+  min-height: 60px !important;
+  height: auto !important;
+  padding: 9px 10px !important;
+  margin: 0 !important;
+  gap: 10px !important;
+  background: #f7f9f9 !important;
+  border: 1px solid var(--ark-line-2, #dfe4e5) !important;
+  border-radius: 0 !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__slot.is-on {
+  background: #fff !important;
+  border-color: var(--ark-accent, #00a2c8) !important;
+  box-shadow: inset 3px 0 0 var(--ark-accent, #00a2c8) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__number {
+  font-size: 14px !important;
+  color: var(--ark-amber, #f0a92b) !important;
+}
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__slotbody strong { font-size: 13px !important; }
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__slotbody span { font-size: 11px !important; color: var(--ark-ink-3, #8b9599) !important; }
+html.sb-doc.sb-pick .sandbox-archive__manage .saves__mark { font-size: 16px !important; color: var(--ark-ink-2, #59636a) !important; }
+
+/* 竖屏：预览区再瘦一点，把首屏让给「新建 / 存档列表」 */
+@media (max-aspect-ratio: 1/1) {
+  html.sb-doc.sb-pick .sandbox-entry { padding: 10px 10px 62px !important; }
+  html.sb-doc.sb-pick .sandbox-archive__preview { padding: 12px !important; }
+  html.sb-doc.sb-pick .sandbox-archive__preview img { max-height: 132px !important; }
+  html.sb-doc.sb-pick .sandbox-archive__preview h1 { font-size: 18px !important; }
+}
+
+/* ---- 7. 横屏：预览与存档两栏并排（竖屏是上下两块） ---------------------- */
+@media (min-aspect-ratio: 1/1) {
+  html.sb-doc.sb-pick .sandbox-archive__manage .saves__list {
+    max-height: calc(100svh - 168px) !important;
+  }
+  html.sb-doc.sb-pick .sandbox-entry .sandbox-archive {
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    height: calc(100svh - 66px) !important;
+    max-height: calc(100svh - 66px) !important;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+  html.sb-doc.sb-pick .sandbox-archive__preview {
+    flex: 1 1 44% !important;
+    display: flex;
+    flex-direction: column;
+  }
+  html.sb-doc.sb-pick .sandbox-archive__preview img {
+    max-height: calc(100svh - 210px) !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 0 8px !important;
+  }
+  html.sb-doc.sb-pick .sandbox-archive__manage {
+    flex: 1 1 56% !important;
+  }
+}

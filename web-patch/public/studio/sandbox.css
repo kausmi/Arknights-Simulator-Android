@@ -1714,15 +1714,21 @@ body.sb {
 }
 
 .pk__op:hover { border-color: var(--gold); background: rgba(242, 201, 76, .12); }
-.pk__op img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 3px; }
-.pk__op span { font-size: 12px; line-height: 1.25; color: var(--text-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* 0.1.16：这里的 `.pk__op img` / `.pk__op span` / 窄屏 `.pk__op span` 三条已经删掉。
+   它们的作用（方框头像、名字单行）整体搬到了 /sandbox/picker-redesign.css，而且换了实现：
+   旧写法把 `aspect-ratio: 1/1` 直接挂在 `<img>` 上 —— 那是替换元素，`height: auto` 时
+   浏览器用图片固有比例算高，aspect-ratio 根本不参与，于是 768×1024 的半身立绘会把格子
+   撑到 1024 高、溢到相邻格子叠成一团（用户截图即此）。新写法是在 `.pk__ava`（普通元素）
+   上开 aspect-ratio，img 绝对定位铺满。既然改由后加载的 picker-redesign.css 全权负责，
+   这几条旧规则必须删掉，否则 `.pk__op span` 会命中新结构里的 `.pk__ava`/`.pk__body`，
+   把画框与容器也压成 12px 的行高。 */
 
 /* 极窄屏（竖屏手机）：格子再小一档，但名字仍然读得出来 */
 @media (max-width: 520px) {
   .pk { width: calc(100vw - 12px); height: calc(100dvh - 12px); padding: 10px; gap: 8px; }
   .pk__grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
   .pk__head h2 { font-size: 15px; }
-  .pk__op span { font-size: 11px; }
 }
 
 /* ---- toast ------------------------------------------------------------------------------------------------------ */

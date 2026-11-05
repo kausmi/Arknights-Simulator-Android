@@ -120,25 +120,23 @@ export async function rebuildField({ canvas, assets, stage, board, settings, onT
 }
 
 /**
- * 将真实技能、范围、人格、庇护、记录与封印范围单向投影给专属视效。
+ * 将真实技能、范围投影给专属视效（目前只剩王）。
  * 伤害与治疗仍由 kit 决定，渲染层不添加状态或推断额外命中。
+ *
+ * 0.1.16：自设干员（维娜·维多利亚 char_9901_vina / 结城理 char_9902_custommakoto）
+ * 已整体移除，对应的 vina / makoto 投影一并删掉，因此敌人的 makoto:paralysis 分支
+ * 也不再需要 —— continue 直接跳过敌人。
  */
 function syncSkillProjection() {
   if (!view || !source) return;
   const views = view.debug?.views;
   if (!views) return;
-  const vina = { actors: [], guards: [] };
-  const makoto = { actors: [], records: [], seals: [], protected: [], paralysis: [] };
   const wang = { actors: [], time: source.time };
-  const sealed = new Set();
   for (const u of source.units) {
     const v = views.get(u.id);
     if (!v || v.destroyed) continue;
     if (!u.alive || !u.deployed || !(u.hp > 0)) continue;
-    if (u.side === 'enemy') {
-      if (u.findBuff('makoto:paralysis')) makoto.paralysis.push(v);
-      continue;
-    }
+    if (u.side === 'enemy') continue;
     const on = !!(u.skill && u.skill.active);
     if (v.skillOn !== on) v.skillOn = on;
     // rangeKeys 只在技能期间有意义；平时置空，避免外沿常亮。
@@ -152,29 +150,7 @@ function syncSkillProjection() {
       }
       wang.actors.push({ view: v, nodes, range: on && u.skill.id === 'skchr_wang_3' ? keys : null });
     }
-    if (u.def.charId === 'char_9901_vina') vina.actors.push({ view: v,
-      active: on && u.def.skill.id === 'skchr_vina_2', aura: u.def.skill.id === 'skchr_vina_2', glory: !!u.findBuff('vina:glory') });
-    if (u.findBuff('protect')?.source?.def?.charId === 'char_9901_vina') vina.guards.push(v);
-    if ((u.mem.makotoSafeUntil || 0) > source.time) makoto.protected.push(v);
-    const persona = u.mem.customMakoto;
-    if (!persona) continue;
-    // Persona banks change at runtime; static spawn info still names the starting bank.
-    v.setSkillSlot?.(persona.index);
-    v.info.skillIndex = persona.index;
-    const voice = audio.units.get(u.id);
-    if (voice) voice.skillIndex = persona.index;
-    makoto.actors.push({ view: v, persona: persona.index, active: on, range: u.rangeKeys || [] });
-    if (persona.record) for (const [enemy, amount] of persona.record) {
-      const target = views.get(enemy.id);
-      if (target && enemy.alive && enemy.deployed) makoto.records.push({ view: target, amount });
-    }
-    if (persona.index === 2 && on) for (const enemy of source.enemiesInKeys(u.rangeKeys, u, { canHitFly: true })) {
-      const target = views.get(enemy.id);
-      if (target && !sealed.has(enemy.id)) { sealed.add(enemy.id); makoto.seals.push(target); }
-    }
   }
-  view.debug.fx.setVinaScene(vina);
-  view.debug.fx.setMakotoScene(makoto);
   view.debug.fx.setWangScene(wang);
 }
 

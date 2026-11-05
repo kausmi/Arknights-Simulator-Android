@@ -770,12 +770,14 @@ public final class HttpService {
 
     private static final JSONArray CATEGORIES_JSON = makeCategories();
 
+    /**
+     * 覆盖表认可的改动类别，直接镜像 OperatorStore.CATEGORIES ——
+     * 以前这里是手抄的四个字符串，加了 loadout 与 skills 之后就成了两份会分别失真的清单
+     * （前端按 categories 画「已改哪几类」，漏一个就显示不全）。
+     */
     private static JSONArray makeCategories() {
         JSONArray a = new JSONArray();
-        a.put("stats");
-        a.put("trait");
-        a.put("talents");
-        a.put("modules");
+        for (String c : OperatorStore.CATEGORIES) a.put(c);
         return a;
     }
 
@@ -842,6 +844,12 @@ public final class HttpService {
                         ops = new JSONObject();
                         put(rootObj, "operators", ops);
                     }
+                } else if (slash < 0) {
+                    // DELETE /api/operators/<id>（不带类别）= 还原这位干员的**全部**改动。
+                    // 以前这里和下面那个分支走的是同一段，只 remove 掉默认类别 "stats"，
+                    // 结果点了「还原这位干员的全部」之后，天赋 / 模组 / 携带全都还留着，
+                    // 界面上那条「这位干员有改动」的横幅也还在 —— 是用户报过的怪现象。
+                    ops.remove(id);
                 } else {
                     JSONObject e = ops.optJSONObject(id);
                     if (e != null) {

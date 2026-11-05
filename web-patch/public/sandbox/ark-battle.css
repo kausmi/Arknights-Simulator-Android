@@ -1,0 +1,624 @@
+/* ============================================================================
+ * ark-battle.css —— 沙盒战斗界面（.sb .hud）统一版式层
+ *
+ * 解决的问题（2026-11-04 实机截图确认）：
+ *   1. 旧布局全程用 rem 写尺寸（.16rem / .46rem / .38rem…），而本项目
+ *      html{font-size:clamp(32px, …)} 在手机上只有 32–33px，
+ *      于是顶栏、按钮、状态牌全挤成十几像素，文字互相压住。
+ *   2. 各浮层各自 position:absolute 到「左上 / 右上 / 居中」，
+ *      窄屏时互相重叠（workspace 与 caps 同排相撞是必然结果）。
+ *
+ * 做法：不重写 DOM，只用一个更靠后的层把每个浮层钉到明确槽位，
+ * 尺寸全部改成 px / clamp(vh)，配色统一到 ark-ui.css 的 token。
+ *
+ * 槽位（横屏）：
+ *   u ┌─────────────────────────┐
+ *     │ workspace        caps   │  ← 第一行固定高 --bar
+ *     ├──────────┬──────────────┤
+ *     │ top      │ score(右)    │  ← 第二行
+ *     │          │              │
+ *     │ drawer   │              │  ← 左侧抽屉
+ *     │          │              │
+ *     └──────────┴──────────────┘
+ *          dock（底部居中）
+ * 竖屏：workspace 与 caps 各占一行，top / score 往下让位。
+ * ========================================================================== */
+
+.sb .hud {
+  --u: 8px;                 /* 屏幕内边距 */
+  --bar: clamp(32px, 4.6vh, 42px);   /* 顶栏高度 */
+  --ctl: clamp(26px, 3.8vh, 34px);   /* 单按钮高度 */
+  --gap: 6px;
+  --fs-s: clamp(10px, 1.35vh, 12px);
+  --fs: clamp(11px, 1.6vh, 13px);
+  --fs-l: clamp(13px, 2vh, 16px);
+  --fs-xl: clamp(16px, 2.6vh, 22px);
+  --hud-panel: #12161ae8;
+  --hud-panel-2: #1b2126f2;
+  --hud-ink: #e9edef;
+  --hud-ink-2: #a7b0b4;
+  --hud-ink-3: #78848a;
+  --hud-line: #ffffff1f;
+  --hud-line-2: #ffffff33;
+  --hud-accent: #35cfe6;
+  --hud-amber: #f0a92b;
+  --hud-red: #ef5948;
+}
+
+/* ---- 1. 顶栏：返回 / 地图 / 存档 / 设置 --------------------------------- */
+.sb .hud .hud__workspace {
+  left: var(--u);
+  top: var(--u);
+  right: auto;
+  width: auto;
+  max-width: calc(100% - var(--u) * 2 - var(--caps-w, 176px) - var(--gap));
+  height: var(--bar);
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-left: 2px solid var(--hud-amber);
+  border-radius: 0;
+  overflow: hidden;
+  z-index: 6;
+  backdrop-filter: blur(8px);
+}
+.sb .hud .hud__workspace > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--hud-line);
+  background: transparent;
+  color: var(--hud-ink);
+  font: 500 var(--fs)/1.1 var(--font-cjk, var(--ark-font));
+  letter-spacing: .02em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sb .hud .hud__workspace > *:last-child { border-right: 0; }
+.sb .hud .hud__workspace > *:hover { background: #ffffff12; color: #fff; }
+.sb .hud .hud__workspace .workspace__brand {
+  color: var(--hud-amber);
+  font: 600 var(--fs-l)/1 var(--font-cjk, var(--ark-font));
+  padding: 0 12px;
+  background: transparent;
+}
+.sb .hud .hud__workspace .workspace__brand span { color: var(--hud-ink); font-size: var(--fs); }
+.sb .hud .hud__workspace .workspace__save { color: var(--hud-accent); }
+.sb .hud .hud__workspace .workspace__save span { margin-left: 6px; opacity: .75; font-family: var(--font-mono, monospace); }
+.sb .hud .hud__workspace .workspace__quick { color: var(--hud-amber); }
+
+/* 「开始菜单」的二级确认面板 */
+.sb .hud .workspace__exit-panel {
+  min-width: 220px;
+  padding: 10px;
+  background: var(--hud-panel-2);
+  border: 1px solid var(--hud-line-2);
+  color: var(--hud-ink);
+  font-size: var(--fs);
+  z-index: 30;
+}
+.sb .hud .workspace__exit-panel p { margin: 0 0 8px; color: var(--hud-ink-2); line-height: 1.5; }
+.sb .hud .workspace__exit-panel button {
+  width: 100%;
+  height: var(--ctl);
+  color: #fff;
+  background: var(--hud-red);
+  border: 1px solid #ffffff33;
+  font: 500 var(--fs) var(--font-cjk, var(--ark-font));
+  cursor: pointer;
+}
+
+/* ---- 2. 右上播放控制（一行胶囊） ---------------------------------------- */
+.sb .hud .hud__caps {
+  top: var(--u);
+  right: var(--u);
+  left: auto;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--gap);
+  z-index: 7;
+}
+.sb .hud .caps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: blur(8px);
+}
+.sb .hud .cap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: var(--ctl);
+  height: var(--ctl);
+  padding: 0 8px;
+  transform: none;
+  background: #ffffff0f;
+  border: 1px solid transparent;
+  border-radius: 0;
+  color: var(--hud-ink-2);
+  font: 700 var(--fs-s)/1 var(--font-mono, monospace);
+}
+.sb .hud .cap > * { transform: none; }
+.sb .hud .cap:hover { background: #ffffff1f; color: #fff; }
+.sb .hud .cap.is-on, .sb .hud .cap.is-live { color: var(--hud-accent); border-color: #35cfe666; background: #35cfe614; }
+.sb .hud .cap .icon { width: 16px; height: 16px; }
+.sb .hud .cap--play { background: var(--hud-amber); color: #17130c; clip-path: none; }
+.sb .hud .cap--play:hover { background: #ffc45e; }
+.sb .hud .cap--play .icon { width: 16px; height: 16px; }
+.sb .hud .caps--sub .cap { min-width: var(--ctl); height: var(--ctl); font-size: var(--fs-s); }
+
+/* ---- 3. 左侧状态牌（生命 / 敌人 / 时间） -------------------------------- */
+.sb .hud .hud__top {
+  top: calc(var(--u) + var(--bar) + var(--gap));
+  left: var(--u);
+  transform: none;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-left: 2px solid var(--hud-accent);
+  filter: none;
+  z-index: 5;
+}
+.sb .hud .plate__stat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-right: 1px solid var(--hud-line);
+}
+.sb .hud .plate__stat .ico { width: 16px; height: 16px; color: var(--hud-accent); }
+.sb .hud .plate__readout { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.sb .hud .plate__readout small {
+  color: var(--hud-ink-3);
+  font-size: var(--fs-s);
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: none;
+}
+.sb .hud .plate__stat b {
+  color: var(--hud-ink);
+  font: 600 var(--fs-l)/1 var(--font-num, var(--ark-mono));
+  min-width: 0;
+  text-shadow: none;
+  letter-spacing: .01em;
+}
+.sb .hud .plate__stat b.is-bad { color: var(--hud-red); }
+
+/* ---- 4. 右侧 DPS 表 ----------------------------------------------------- */
+.sb .hud .hud__score {
+  top: calc(var(--u) + var(--bar) + var(--gap));
+  right: var(--u);
+  left: auto;
+  width: min(210px, 46vw);
+  max-height: calc(100% - var(--bar) - var(--u) * 3 - 90px);
+  overflow: auto;
+  padding: 8px 10px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-top: 2px solid var(--hud-amber);
+  color: var(--hud-ink);
+  z-index: 5;
+}
+.sb .hud .score__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: var(--fs);
+}
+.sb .hud .score__head > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb .hud .score__head i { width: 6px; height: 6px; background: var(--hud-amber); }
+.sb .hud .score__clear, .sb .hud .score__fold {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--hud-line-2);
+  background: transparent;
+  color: var(--hud-ink-2);
+  font-size: var(--fs-s);
+  cursor: pointer;
+}
+.sb .hud .score__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9px; }
+.sb .hud .score__table th, .sb .hud .score__table td { overflow: hidden; text-overflow: ellipsis; }
+.sb .hud .score__table th, .sb .hud .score__table td {
+  padding: 3px 2px;
+  text-align: right;
+  color: var(--hud-ink-2);
+  border-bottom: 1px solid #ffffff10;
+  white-space: nowrap;
+}
+.sb .hud .score__table th:first-child, .sb .hud .score__table td:first-child { text-align: left; }
+.sb .hud .hud__score.is-folded { width: auto; max-height: none; padding: 6px 9px; }
+.sb .hud .hud__score.is-folded .score__table { display: none; }
+.sb .hud .hud__score.is-folded .score__clear { display: none; }
+.sb .hud .hud__score.is-folded .score__head { margin: 0; }
+
+/* ---- 5. 重置演练：移到左下角，避开右上控制组 ---------------------------- */
+.sb .hud .hud__danger {
+  top: auto;
+  right: auto;
+  left: var(--u);
+  bottom: calc(var(--u) + 76px);
+  z-index: 5;
+}
+.sb .hud .hud__danger button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--ctl);
+  padding: 0 10px;
+  color: #f0b3ab;
+  background: #2a1c1ae8;
+  border: 1px solid #ef594855;
+  border-radius: 0;
+  font-size: var(--fs-s);
+  cursor: pointer;
+}
+.sb .hud .hud__danger button:hover { color: #ffd2cb; border-color: var(--hud-red); }
+.sb .hud .hud__danger .icon { width: 15px; height: 15px; }
+
+/* ---- 6. 底部手牌 + 费用 -------------------------------------------------- */
+.sb .hud .hud__dock {
+  right: auto;
+  left: 50%;
+  bottom: var(--u);
+  transform: translateX(-50%);
+  max-width: calc(100% - var(--u) * 2);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-top: 2px solid var(--hud-amber);
+  border-radius: 0;
+  box-shadow: none;
+  z-index: 6;
+}
+.sb .hud .dp__num { font: 700 var(--fs-xl)/1 var(--font-mono, monospace); color: var(--hud-amber); }
+.sb .hud .dp__icon { background: var(--hud-amber); }
+.sb .hud .dp__bar { background: #f0a92b26; }
+.sb .hud .dp__bar > i { background: var(--hud-amber); }
+.sb .hud .ocard__box { border: 1px solid var(--hud-line-2); background: #1c2226; border-radius: 0; }
+.sb .hud .ocard.is-on .ocard__box { border-color: var(--hud-accent); box-shadow: 0 0 0 1px #35cfe688; }
+.sb .hud .hand__more { border: 1px solid var(--hud-line-2); background: #ffffff0a; color: var(--hud-amber); }
+
+/* ---- 7. 左侧抽屉（敌人 / 地形） ---------------------------------------- */
+.sb .hud .hud__drawer {
+  top: calc(var(--u) + var(--bar) + var(--gap));
+  left: 0;
+  bottom: 86px;
+  z-index: 4;
+}
+.sb .hud .dr__tabs { background: var(--hud-panel); border: 1px solid var(--hud-line); border-left: 0; padding: 4px; gap: 4px; }
+.sb .hud .dr__tab {
+  width: 44px;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--hud-ink-2);
+  background: #ffffff08;
+  border: 1px solid transparent;
+  border-left: 2px solid transparent;
+  font-size: var(--fs-s);
+}
+.sb .hud .dr__tab span { font-size: 9px; letter-spacing: .06em; }
+.sb .hud .dr__tab .icon { width: 18px; height: 18px; }
+.sb .hud .dr__tab.is-on { color: var(--hud-accent); border-left-color: var(--hud-accent); background: #35cfe60f; }
+.sb .hud .dr__panel { background: var(--hud-panel-2); border: 1px solid var(--hud-line); border-left: 0; }
+.sb .hud .dr__inner { gap: 8px; padding: 10px; }
+.sb .hud .dr__head { padding-bottom: 6px; border-bottom: 1px solid var(--hud-line); color: var(--hud-ink); font-size: var(--fs); letter-spacing: .04em; }
+.sb .hud .dr__hint { color: var(--hud-ink-2); font-size: var(--fs-s); line-height: 1.6; }
+
+/* ---- 8. 详情面板（左下） ----------------------------------------------- */
+.sb .hud .hud__detail {
+  left: var(--u);
+  bottom: calc(var(--u) + 76px + 44px);
+  right: auto;
+  top: auto;
+  /* 别再压窄：之前 min(320px) + 46vh 把技能/天赋挤成一坨，版式交给 detail-redesign.css */
+  width: min(560px, calc(100vw - 120px));
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  background: var(--hud-panel-2);
+  border: 1px solid var(--hud-line);
+  border-left: 2px solid var(--hud-accent);
+  border-radius: 0;
+  clip-path: none;
+  box-shadow: none;
+  z-index: 8;
+  font-size: var(--fs);
+}
+
+/* ---- 9. 消息条 ---------------------------------------------------------- */
+.sb .hud .hud__msg {
+  left: 50%;
+  top: auto;
+  bottom: calc(var(--u) + 84px);
+  transform: translateX(-50%);
+  max-width: min(70%, 520px);
+  padding: 6px 12px;
+  background: var(--hud-panel-2);
+  border: 1px solid var(--hud-line-2);
+  border-left: 2px solid var(--hud-amber);
+  color: var(--hud-ink);
+  font-size: var(--fs);
+  z-index: 9;
+}
+.sb .hud .hud__msg.is-bad { border-left-color: var(--hud-red); color: #ffb3a6; }
+
+/* ---- 10. 暂停遮罩 ------------------------------------------------------- */
+.sb .hud .hud__pause { background: #05080acc; backdrop-filter: blur(2px); font-size: var(--fs-l); }
+
+/* ---- 11. 竖屏：顶栏占整行，控制组下移一行 ------------------------------- */
+@media (max-aspect-ratio: 1/1) {
+  .sb .hud {
+    --u: 6px;
+    --bar: 38px;
+    --ctl: 30px;
+    --caps-w: 100%;
+    --fs-s: 10px;
+    --fs: 11px;
+    --fs-l: 13px;
+    --fs-xl: 18px;
+  }
+  .sb .hud .hud__workspace { right: var(--u); max-width: none; }
+  .sb .hud .hud__workspace > * { padding: 0 9px; }
+  /* 竖屏横向放不下「状态牌 + 控制组」，控制组单独占第三行 */
+  .sb .hud .hud__caps {
+    top: calc(var(--u) + var(--bar) + var(--gap) + 40px);
+    right: var(--u);
+    left: auto;
+    width: auto;
+  }
+  .sb .hud .hud__top {
+    top: calc(var(--u) + var(--bar) + var(--gap));
+    left: var(--u);
+    max-width: calc(100% - var(--u) * 2);
+  }
+  .sb .hud .plate__stat { padding: 4px 7px; gap: 5px; }
+  .sb .hud .hud__score {
+    top: calc(var(--u) + var(--bar) + var(--gap) * 2 + 40px + 50px);
+    width: min(180px, 52vw);
+    max-height: 34vh;
+  }
+  .sb .hud .hud__drawer { top: calc(var(--u) + var(--bar) + var(--gap) * 2 + 40px + 50px); bottom: 96px; max-height: calc(100% - 240px); }
+  .sb .hud .hud__danger { bottom: calc(var(--u) + 84px); }
+  .sb .hud .hud__detail { bottom: calc(var(--u) + 84px + 40px); width: calc(100% - var(--u) * 2); max-height: calc(100vh - 200px); }
+  .sb .hud .hud__dock { left: var(--u); right: var(--u); transform: none; max-width: none; justify-content: center; }
+}
+
+/* ---- 12. 手牌区尺寸（旧样式用 rem，手机上卡片只有 28×33，点不中）------ */
+.sb .hud .hud__dock { gap: 10px; padding: 8px 10px; }
+.sb .hud .hud__dp { display: flex; align-items: center; gap: 6px; min-width: 54px; }
+.sb .hud .dp__num { font: 700 clamp(16px, 2.4vh, 22px)/1 var(--font-mono, monospace); }
+.sb .hud .dp__icon { width: 12px; height: 14px; }
+.sb .hud .hud__hand { min-width: 0; }
+.sb .hud .hand__scroll {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: min(62vw, 460px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+.sb .hud .ocard { position: relative; width: 56px; height: 66px; flex: none; }
+.sb .hud .ocard__box { width: 56px; height: 66px; overflow: hidden; }
+.sb .hud .ocard__ava { width: 100%; height: 100%; object-fit: cover; }
+.sb .hud .ocard__name { font-size: 10px; bottom: 2px; left: 3px; right: 3px; }
+.sb .hud .ocard__cost { font-size: 10px; }
+.sb .hud .ocard__prof { width: 12px; height: 12px; }
+.sb .hud .ocard__del { width: 16px; height: 16px; font-size: 9px; top: -4px; right: -4px; }
+.sb .hud .oskills { display: flex; gap: 4px; align-items: flex-end; }
+.sb .hud .oskill { width: 30px; height: 34px; }
+.sb .hud .oskill__n { font-size: 9px; }
+.sb .hud .hand__more { width: 26px; height: 66px; font-size: 14px; }
+
+/* 状态牌：旧规则把 ico 与两行读数挤进 35px，肉眼会互相压住 */
+.sb .hud .hud__top { height: auto; }
+.sb .hud .plate__stat { padding: 4px 8px; gap: 5px; min-height: 0; }
+.sb .hud .plate__stat .ico { flex: none; }
+.sb .hud .plate__readout { gap: 1px; }
+.sb .hud .plate__readout small { font-size: 9px; }
+.sb .hud .plate__stat b { font-size: clamp(12px, 1.8vh, 15px); }
+.sb .hud .plate__stat i { font-size: 9px; letter-spacing: .06em; }
+
+/* 消息条：旧规则 white-space:nowrap，长提示会横穿整屏压住手牌 */
+.sb .hud .hud__msg {
+  width: max-content;
+  max-width: min(92%, 560px);
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.45;
+  text-align: center;
+}
+/* 计分表 6 列在 178px 里放不下，加宽并允许表头折行 */
+.sb .hud .hud__score { width: min(236px, 56vw); }
+.sb .hud .score__table th { white-space: normal; line-height: 1.2; }
+
+/* ---- 13. 选干员弹层：职业筛选行横向滚动，不再把最后一个职业裁掉 -------- */
+.sb .hud .pk__professions {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+  scrollbar-width: none;
+}
+.sb .hud .pk__professions::-webkit-scrollbar { display: none; }
+.sb .hud .pk__professions .dbtn {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+/* 卡片上的名字与费用在 342 宽下也不能被压掉 */
+.sb .hud .pk__name { font-size: 12.5px; }
+.sb .hud .pk__meta { font-size: 10px; }
+
+/* 左侧抽屉原来和状态牌同一个 top，敌人/地形两个标签正好被「剿灭数 / 作战时间」压住。
+   状态牌高约 36px，抽屉整体下移让出这一条。 */
+.sb .hud .hud__drawer {
+  top: calc(var(--u) + var(--bar) + var(--gap) + 40px);
+  bottom: 86px;
+}
+@media (max-aspect-ratio: 1/1) {
+  .sb .hud .hud__drawer { top: calc(var(--u) + var(--bar) + var(--gap) + 40px + 50px); }
+}
+
+/* 手牌栏：从底部居中改为靠右，别挡着地图中央 */
+.sb .hud .hud__dock {
+  left: auto;
+  right: var(--u);
+  transform: none;
+  max-width: calc(100% - var(--u) * 2);
+}
+@media (max-aspect-ratio: 1/1) {
+  .sb .hud .hud__dock { left: var(--u); right: var(--u); transform: none; }
+}
+
+/* 手牌栏靠右之后，详情面板（detail-redesign.css 里贴底 bottom:8px）会和它叠在一起。
+   只把面板整体抬高一行手牌的高度，宽度与高度还给 detail-redesign.css，别再压成小方块。 */
+.sb .hud .hud__detail {
+  bottom: calc(var(--u) + 78px);
+  max-height: calc(100vh - var(--u) - 78px - 8px);
+}
+
+/* ── 提示条复位（P3）：原来 bottom:calc(var(--u)+84px) + 水平居中 + max-width:92%
+   变成一条横贯全屏的宽横带，正好压在抽屉的敌人卡片列表上（用户：「敌人信息显示不完」）。
+   改成贴右下角、宽度收窄，抽屉（左侧 min(52vw,330px)）那块永远不被挡。 */
+.sb .hud .hud__msg {
+  left: auto;
+  right: 12px;
+  top: auto;
+  bottom: calc(var(--u) + 78px);
+  transform: none;
+  width: max-content;
+  max-width: min(46vw, 420px);
+  margin: 0;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.45;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+}
+.sb .hud .hud__msg.is-on {
+  opacity: 1;
+  transform: none;
+}
+@media (max-aspect-ratio: 1/1) {
+  .sb .hud .hud__msg { right: 10px; max-width: min(72vw, 380px); bottom: calc(var(--u) + 96px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+ * P2：战斗内干员面板按官方版式重排（用户 P4 参考图）
+ *   官方 = 左侧大立绘压在地图上 + 右侧竖排名字/LV/攻击/防御/法抗/阻挡
+ *        + 一行 tab（技能/特性/天赋）+ 技能图标+技能名+标签+完整多行描述（不截断）
+ *        + 底部白色血条。
+ *   现状问题 = 面板只有 560px 宽，立绘 108 + 左栏 208 就把右栏吃掉一半，
+ *   技能描述被右侧裁断（用户：「技能都看不清楚天赋也看不清」「攻击力+45%，攻击速度+4…」）。
+ *   这里把面板放大到接近全宽，并把已写死的尺寸一并覆盖（本文件最后加载，同特异性即胜出）。
+ * ══════════════════════════════════════════════════════════════════════════════════════════ */
+.sb .hud .hud__detail {
+  left: calc(var(--u) + 2px);
+  right: auto;
+  top: auto;
+  bottom: calc(var(--u) + 78px);
+  width: min(920px, calc(100vw - 92px));
+  max-height: calc(100vh - var(--u) - 92px);
+  overflow: hidden;             /* 滚动交给内部的 .dt__info，避免双滚动条 */
+  border-left: 2px solid var(--hud-accent);
+}
+
+/* 立绘：官方是左侧一大块，比原来的 108 明显更大 */
+.sb .hud .hud__detail .dt__portrait {
+  width: 132px;
+  height: 132px;
+  align-self: flex-start;
+}
+/* 左栏收窄：官方名字/等级/职业是紧凑竖排，把宽度让给右边的技能正文 */
+.sb .hud .hud__detail .dt__basic {
+  width: 182px;
+  padding: 10px 10px 8px;
+  gap: 6px;
+}
+.sb .hud .hud__detail .dt__name { font-size: 19px; line-height: 1.15; }
+.sb .hud .hud__detail .dt__stars { font-size: 12px; }
+.sb .hud .hud__detail .dt__en { font-size: 11.5px; }
+.sb .hud .hud__detail .dt__classline { font-size: 12px; }
+.sb .hud .hud__detail .dt__level { font-size: 13px; }
+
+/* 血条：官方是白色进度条 */
+.sb .hud .hud__detail .dt__hp {
+  height: 20px;
+  margin-top: auto;
+  background: #ffffff1f;
+  border: 1px solid #ffffff3d;
+  border-radius: 2px;
+}
+.sb .hud .hud__detail .dt__hp > i {
+  background: linear-gradient(90deg, #ffffffd9, #ffffff);
+}
+.sb .hud .hud__detail .dt__hp-label { font-size: 11px; color: #1a1f22; font-weight: 700; }
+.sb .hud .hud__detail .dt__hp b { font-size: 12.5px; color: #1a1f22; font-weight: 700; }
+
+/* 右栏：属性 4×2 保持，但字号全面抬高（原 9.5/13 在手机上偏小） */
+.sb .hud .hud__detail .dt__right { padding: 9px 10px 9px; gap: 7px; }
+.sb .hud .hud__detail .dt__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.sb .hud .hud__detail .dt__stat { padding: 4px 6px; }
+.sb .hud .hud__detail .dt__stat i { font-size: 11px; line-height: 1.3; }
+.sb .hud .hud__detail .dt__stat b { font-size: 15px; line-height: 1.25; }
+
+/* tab：官方紧贴技能区、比现在高一档 */
+.sb .hud .hud__detail .dt__tabs { gap: 2px; }
+.sb .hud .hud__detail .dt__tab { height: 30px; padding: 0 13px; font-size: 13px; }
+.sb .hud .hud__detail .dt__edit { height: 30px; font-size: 12.5px; }
+
+/* 技能正文：完整换行，字号 13/1.72 */
+.sb .hud .hud__detail .dt__info { font-size: 13px; line-height: 1.72; padding-right: 6px; }
+.sb .hud .hud__detail .dt__description-icon { width: 44px; height: 44px; }
+.sb .hud .hud__detail .dt__seg-h b { font-size: 15px; }
+.sb .hud .hud__detail .dt__seg-p { font-size: 13px; line-height: 1.72; }
+.sb .hud .hud__detail .dt__seg-k { font-size: 11px; padding: 1px 6px; }
+.sb .hud .hud__detail .dt__seg-meta { font-size: 11.5px; gap: 5px; }
+.sb .hud .hud__detail .dt__seg-meta i { font-size: 11.5px; padding: 2px 7px; line-height: 1.35; }
+.sb .hud .hud__detail .dt__mod-name { font-size: 14px; }
+.sb .hud .hud__detail .dt__mod-talent b { font-size: 13px; }
+
+/* 攻击范围：横排一行，高度抬一点 */
+.sb .hud .hud__detail .dt__range-preview { padding: 5px 8px; }
+.sb .hud .hud__detail .dt__range-preview svg { height: 34px; }
+.sb .hud .hud__detail .dt__range-preview small { font-size: 12px; }
+
+/* 竖屏：面板整宽，属性改 2 列 */
+@media (max-aspect-ratio: 1/1) {
+  .sb .hud .hud__detail {
+    left: var(--u);
+    width: calc(100vw - var(--u) * 2);
+    max-height: calc(100vh - var(--u) - 110px);
+  }
+  .sb .hud .hud__detail .dt__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sb .hud .hud__detail .dt__info { font-size: 14px; line-height: 1.8; }
+  .sb .hud .hud__detail .dt__seg-p { font-size: 14px; line-height: 1.8; }
+}

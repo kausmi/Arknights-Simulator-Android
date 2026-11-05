@@ -238,7 +238,9 @@ public class MainActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(false);
         // 初始缩放交给 WebView 按视口自己算（v.setInitialScale 默认就是 0），不必显式调。
-        v.setBackgroundColor(Color.BLACK);
+        // 底色用站点的浅灰 --ark-bg，不用纯黑：横屏时页面若比视口矮/窄一点点，
+        // 透出来的就是同色，不会出现用户报的「主界面横屏露黑边」。
+        v.setBackgroundColor(0xFFE9EBEB);
         v.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
@@ -347,7 +349,20 @@ public class MainActivity extends Activity {
                 // 先清掉 0.1.x 留在外部存储里的那堆干员立绘（相册能扫到的），
                 // 再把网页资源解到私有目录。
                 WebInstaller.purgeLegacyExternal(this, msg -> step(msg));
-                webDir = WebInstaller.ensure(this, base, this::step);
+                try {
+                    webDir = WebInstaller.ensure(this, base, this::step);
+                } catch (Throwable unzipError) {
+                    // 解包失败（磁盘满 / 包损坏 / 目录被占）时不要整个 App 卡死：
+                    // 只要上一次的 web 目录还在且完整，就退回用它继续跑，
+                    // 顶多是样式旧一点，比打不开强。
+                    File prev = new File(base, "web");
+                    if (new File(prev, "public/studio/home.html").isFile()) {
+                        step("网页资源更新失败，先用上一版继续（" + unzipError + "）");
+                        webDir = prev;
+                    } else {
+                        throw unzipError;
+                    }
+                }
 
                 step("正在启动本地服务…");
                 server = new HttpService(webDir, PORT);
@@ -456,13 +471,22 @@ public class MainActivity extends Activity {
         public String extractAssets() {
             ShizukuBridge.Flavor f = ShizukuBridge.currentFlavor();
             if (!f.usable) return f.label + " 暂时还用不了（目录结构还没适配），请切到简中官服或 B 服";
-            if (!ShizukuBridge.alive()) return "Shizuku 没有在运行，请先启动 Shizuku";
-            if (!ShizukuBridge.granted()) {
-                ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
-                    ExtractTask.get().phase(ExtractTask.Phase.IDLE,
-                            ok ? "Shizuku 已授权，可以点「开始提取」了" : "授权被拒绝，可以再点一次重试");
-                }));
-                return "已弹出 Shizuku 授权框，请选「允许」，然后回来点「开始提取」";
+            if (ShizukuBridge.isRootChannel()) {
+                if (!ShizukuBridge.rootAvailable()) {
+                    // 主动引一次 su 授权框（Magisk 之类会自己弹），弹完再判一次结果。
+                    boolean ok = ShizukuBridge.requestRoot();
+                    return ok ? "已获得超级用户权限，可以点「开始提取」了"
+                              : "没拿到 root 权限：" + ShizukuBridge.channelBlockReason();
+                }
+            } else {
+                if (!ShizukuBridge.alive()) return "Shizuku 没有在运行，请先启动 Shizuku";
+                if (!ShizukuBridge.granted()) {
+                    ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
+                        ExtractTask.get().phase(ExtractTask.Phase.IDLE,
+                                ok ? "Shizuku 已授权，可以点「开始提取」了" : "授权被拒绝，可以再点一次重试");
+                    }));
+                    return "已弹出 Shizuku 授权框，请选「允许」，然后回来点「开始提取」";
+                }
             }
             // 先实测目录能不能读（force：用户主动点的，绕过缓存重新探）。
             // 这一步比查 PackageManager 靠谱得多 —— Android 11+ 的包可见性会让
@@ -494,11 +518,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String extractSkins(String charId) {
             if (charId == null || !charId.matches("^char_[0-9A-Za-z_]+$")) return "干员 id 不对";
-            if (!ShizukuBridge.alive()) return "Shizuku 没在跑，先去设置里授权";
-            if (!ShizukuBridge.granted()) {
-                ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
-                }));
-                return "已弹出 Shizuku 授权框";
+            if (ShizukuBridge.isRootChannel()) {
+                if (!ShizukuBridge.rootAvailable()) {
+                    boolean ok = ShizukuBridge.requestRoot();
+                    if (!ok) return ShizukuBridge.channelBlockReason();
+                }
+            } else {
+                if (!ShizukuBridge.alive()) return "Shizuku 没在跑，先去设置里授权";
+                if (!ShizukuBridge.granted()) {
+                    ui.post(() -> ShizukuBridge.request(MainActivity.this, ok -> {
+                    }));
+                    return "已弹出 Shizuku 授权框";
+                }
             }
             if (!ShizukuBridge.arkDirReadable(true)) return "读不到方舟资源目录";
             new Thread(() -> {
@@ -518,6 +549,10 @@ public class MainActivity extends Activity {
                     };
                     ExtractTask task = ExtractTask.get();
                     task.begin();
+                    // 必须切到 SKIN 阶段再开跑：进度条的百分比是
+                    // step.base() + step.weight * stepProgress 算出来的，
+                    // 停在 PREPARE（权重 0.06）时就算解完了也只走到 6%。
+                    task.step(ExtractTask.Step.SKIN, "正在解 " + charId + " 的皮肤…");
                     task.phase(ExtractTask.Phase.RUNNING, "正在解 " + charId + " 的皮肤…");
                     int code = ex.extractSkins(py, exDir, env, task::line, charId);
                     task.finish(code);
@@ -581,6 +616,30 @@ public class MainActivity extends Activity {
         }
 
         /**
+         * 切换提权通道（"shizuku" / "root"）。
+         *
+         * <p>切到 root 时会顺手探一次 su（首次会弹 root 管理器的授权框）。
+         * 返回切换后的完整状态 JSON，前端拿它重画整个资源包面板。
+         */
+        @JavascriptInterface
+        public String selectExtractChannel(String id) {
+            ShizukuBridge.setChannelId(id);
+            if (ShizukuBridge.isRootChannel()) ShizukuBridge.rootAvailable(true);
+            return ShizukuBridge.statusJson();
+        }
+
+        /**
+         * 主动申请 root 权限（给「点一下授权」按钮用）。
+         * 返回一句话，前端直接 toast。
+         */
+        @JavascriptInterface
+        public String requestRootPermission() {
+            boolean ok = ShizukuBridge.requestRoot();
+            if (ok) return "已获得超级用户权限";
+            return ShizukuBridge.channelBlockReason();
+        }
+
+        /**
          * 资源要不要更新？—— 首次进入、游戏热更之后都要问一次。
          *
          * 判据三件事同时成立才算「该更新」：
@@ -595,13 +654,13 @@ public class MainActivity extends Activity {
         public String assetUpdateHint() {
             boolean ready = new Extractor(runtimeDir(), webDir).hasOutput();
             long bytes = assetsBytes();
-            boolean channel = ShizukuBridge.alive() && ShizukuBridge.granted();
+            boolean channel = ShizukuBridge.channelReady();
             String fp = channel ? ShizukuBridge.arkAssetFingerprint() : "";
             SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
             String lastFp = p.getString(KEY_ARK_FP, "");
             String snoozeFp = p.getString(KEY_ARK_FP_SNOOZE, "");
             String reason = "";
-            if (ShizukuBridge.alive() && ShizukuBridge.granted()) {
+            if (ShizukuBridge.channelReady()) {
                 if (!ready) reason = "first";
                 else if (!fp.isEmpty() && !lastFp.isEmpty() && !fp.equals(lastFp)) reason = "updated";
             }
@@ -617,7 +676,7 @@ public class MainActivity extends Activity {
         /** 用户点「稍后再说」：记住这一次的指纹，同一版本不再烦他；游戏一更新又会提醒。 */
         @JavascriptInterface
         public void suppressAssetHint() {
-            String fp = ShizukuBridge.alive() && ShizukuBridge.granted()
+            String fp = ShizukuBridge.channelReady()
                     ? ShizukuBridge.arkAssetFingerprint() : "";
             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_ARK_FP_SNOOZE, fp).apply();
         }
@@ -767,7 +826,8 @@ public class MainActivity extends Activity {
                 task.step(ExtractTask.Step.PREPARE, "释放 python 运行时…");
                 File rt = PythonInstaller.ensure(this, this::step);
                 task.phase(ExtractTask.Phase.RUNNING, "正在读取方舟资源…");
-                step("正在提取《明日方舟》资源（Shizuku 直读）…");
+                step("正在提取《明日方舟》资源（"
+                        + (ShizukuBridge.isRootChannel() ? "ROOT 直读" : "Shizuku 直读") + "）…");
                 Extractor ex = new Extractor(rt, webDir);
                 int code = ex.run(null, line -> {
                     task.line(line);

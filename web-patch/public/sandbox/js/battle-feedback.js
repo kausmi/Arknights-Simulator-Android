@@ -82,7 +82,8 @@ export function createBattleFeedback({ view, canvas }) {
       if (u.skill?.kind !== 'passive' && (u.skill?.active || (pulses.get(u.id) || 0) > at)) {
         const color = u.def.charId === 'char_1045_svash2' ? '#b9edff' : '#ffbf70';
         // Custom operators already draw their own range edge in their dedicated VFX module.
-        if (!['char_1503_talula', 'char_9901_vina', 'char_9902_custommakoto', 'char_2027_wang'].includes(u.def.charId)) glow(u.rangeKeys, color, now);
+        // 0.1.16：自设干员（char_9901_vina / char_9902_custommakoto）已整体移除，白名单只剩官方干员。
+        if (!['char_1503_talula', 'char_2027_wang'].includes(u.def.charId)) glow(u.rangeKeys, color, now);
         const p = view.tileScreen(u.tileR, u.tileC);
         if (p) {
           ctx.fillStyle = color; ctx.globalAlpha = .65; ctx.shadowColor = color; ctx.shadowBlur = 3;

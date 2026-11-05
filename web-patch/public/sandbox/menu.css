@@ -338,6 +338,35 @@
   .onboard__skip, .onboard__next, .onboard__done { padding: 7px 12px; font-size: 12px; }
 }
 
+/* ---- 设置 →「用哪种身份读」（提权通道切换） --------------------------------------------------
+   两条通道：Shizuku（shell 身份）/ ROOT（uid 0）。卡片形状与包体选择器一致，
+   但强调程度更高 —— 它决定的是「能不能进门」，包体只决定「进哪个门」。
+   尺寸一律 px：本项目 1rem 在手机横屏只有 33px，写 rem 控件会小到点不中。 */
+.settings__channels { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 2px; }
+.settings__channel-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.settings__channel {
+  display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; text-align: left;
+  border: 1px solid #c4c2ac2a; border-radius: 6px; background: #141816; cursor: pointer;
+  color: #b9c0bb; font: 12px var(--font-cjk);
+}
+.settings__channel b { display: flex; align-items: center; gap: 6px; color: #d0d2c7; font-size: 12.5px; font-weight: 600; }
+.settings__channel small { color: #87918b; font-size: 11px; line-height: 1.45; }
+.settings__channel:hover:not(:disabled) { border-color: #4ed8af66; }
+.settings__channel.is-on { border-color: #4ed8af; background: #4ed8af14; }
+.settings__channel.is-on b { color: #b6ffe8; }
+.settings__channel.is-off { opacity: .72; }
+.settings__channel.is-off:hover:not(:disabled) { border-color: #c9a13f66; }
+.settings__channel-now {
+  padding: 0 5px; border-radius: 3px; font: 10px/15px var(--font-mono); letter-spacing: .06em;
+  border: 1px solid #4ed8af88; color: #9aead7; background: #4ed8af14; font-weight: 400;
+}
+.settings__channel-note { margin-top: 2px; color: #87918b; }
+
+@media (max-height: 620px), (max-width: 720px) {
+  .settings__channel-list { grid-template-columns: 1fr; }
+  .settings__channel { padding: 6px 9px; }
+}
+
 /* ---- 设置 →「读取哪个客户端」（包体切换） --------------------------------------------------- */
 .settings__flavors { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
 .settings__flavor-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }

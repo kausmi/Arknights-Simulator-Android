@@ -7,6 +7,10 @@ async function enter(save, index = null) {
   if (entering) return;
   activateSave(save); selectSaveSlot(index); entering = true;
   await terminalTransition(async () => {
+    // 战场的底色是深色（sandbox.css 的 body.sb / hud-theme.css），而模式选择界面
+    // 跟主界面一样是浅色（/sandbox/light.css 只对 html.sb-pick 生效）。
+    // 进战斗前摘掉 sb-pick，html 的底色才能回到深色，否则战斗页边缘会露白。
+    document.documentElement.classList.remove('sb-pick');
     setTerminalState('battle');
     document.getElementById('start')?.remove();
     const app = document.getElementById('app');

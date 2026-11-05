@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="ark-doc ops-doc">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="dark" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>干员数值 · 明日方舟模拟器</title>
+  <title>干员详情 · 明日方舟模拟器</title>
   <link rel="icon" href="/icons/favicon.ico?v=arksim" sizes="16x16 32x32 48x48" />
   <link rel="stylesheet" href="/fonts/fonts.css" />
   <link rel="stylesheet" href="/css/theme.css" />
@@ -15,9 +15,13 @@
   <link rel="stylesheet" href="/sandbox/menu-layout.css" />
   <link rel="stylesheet" href="/sandbox/interface-text.css" />
   <link rel="stylesheet" href="/sandbox/menu-fit.css" />
-  <link rel="stylesheet" href="/studio/operators.css" />
+  <link rel="stylesheet" href="/studio/operators.css?v=22" />
   <link rel="stylesheet" href="/css/mobile-fit.css" />
   <link rel="stylesheet" href="/css/responsive.css" />
+  <link rel="stylesheet" href="/sandbox/panel-redesign.css" />
+  <link rel="stylesheet" href="/sandbox/light.css" />
+  <link rel="stylesheet" href="/css/ark-ui.css?v=6" />
+  <link rel="stylesheet" href="/css/ark-pages.css?v=8" />
   <script src="/sandbox/js/terminal-navigation.js"></script>
   <script>(function(){function a(){try{var s=window.AndroidShell;if(!s||typeof s.safeInsets!=="function")return;var i=JSON.parse(s.safeInsets())||{};var r=document.documentElement.style;var k={top:"--sa-t",right:"--sa-r",bottom:"--sa-b",left:"--sa-l"};for(var n in k){var v=Number(i[n]);if(isFinite(v)&&v>=0)r.setProperty(k[n],v+"px");}}catch(e){}}a();addEventListener("resize",a,{passive:true});addEventListener("orientationchange",function(){setTimeout(a,120)},{passive:true});setTimeout(a,300);setTimeout(a,1200);})();</script>
 </head>
@@ -28,40 +32,52 @@
   </div>
   <main class="ops">
     <header class="ops__head">
-      <div>
-        <span class="menu__eyebrow">OPERATOR TUNING</span>
-        <h1>干员数值<span>调整</span></h1>
-        <p>改动只保存成一份覆盖表，官方原表不动。改过的数字在沙盒与作战里立刻生效。</p>
+      <div class="ops__headmain">
+        <span class="menu__eyebrow">OPERATOR DOSSIER</span>
+        <h1>干员<span>详情</span></h1>
+        <p>每位干员的数值、天赋、模组、携带与立绘都在这一页。改动存成一份覆盖表，官方原表不动，
+           改完立刻在沙盒与作战里生效。</p>
+      </div>
+      <div class="ops__headactions">
+        <button type="button" class="ops__custom" id="ops-new-custom">＋ 新建自定义干员</button>
+        <button type="button" class="ops__reset" id="ops-reset-all" disabled>还原改动</button>
       </div>
     </header>
 
+    <!-- 工具条分两行：第一行搜索 + 计数，第二行是筛选。
+         原来六七个控件挤在一行里 wrap，手机上每次换行位置都不一样，找起来很累。 -->
     <div class="ops__bar">
-      <input class="ops__search" id="ops-search" type="search" placeholder="搜索干员名 / 职业 / id" autocomplete="off" />
-      <select class="ops__filter" id="ops-prof" aria-label="按职业筛选">
-        <option value="">全部职业</option>
-        <option value="PIONEER">先锋</option><option value="WARRIOR">近卫</option>
-        <option value="SNIPER">狙击</option><option value="MEDIC">医疗</option>
-        <option value="CASTER">术师</option><option value="SPECIAL">特种</option>
-        <option value="TANK">重装</option><option value="SUPPORT">辅助</option>
-      </select>
-      <select class="ops__filter" id="ops-subprof" aria-label="按子职业筛选">
-        <option value="">全部子职业</option>
-      </select>
-      <select class="ops__filter" id="ops-rarity" aria-label="按星级筛选">
-        <option value="0">全部星级</option>
-        <option value="6">★★★★★★</option><option value="5">★★★★★</option>
-        <option value="4">★★★★</option><option value="3">★★★</option>
-        <option value="2">★★</option><option value="1">★</option>
-      </select>
-      <select class="ops__filter" id="ops-module" aria-label="按模组筛选">
-        <option value="any">全部（模组）</option>
-        <option value="has">有模组</option>
-        <option value="none">无模组</option>
-      </select>
-      <label class="ops__only"><input type="checkbox" id="ops-only-edited" /> 只看已改过的</label>
-      <span class="ops__count" id="ops-count">读取中…</span>
-      <button type="button" class="ops__custom" id="ops-new-custom">＋ 新建自定义干员</button>
-      <button type="button" class="ops__reset" id="ops-reset-all" disabled>还原改动</button>
+      <div class="ops__bar-row ops__bar-row--search">
+        <input class="ops__search" id="ops-search" type="search" placeholder="搜索干员名 / 职业 / id" autocomplete="off" />
+        <span class="ops__count" id="ops-count">读取中…</span>
+      </div>
+      <div class="ops__bar-row ops__bar-row--filters">
+        <!-- 职业栏：官方干员页的入口。点「职业」按钮从右侧滑出竖排职业图标，
+             选中职业后在同一栏里展开该职业的子职业，点一下就筛。 -->
+        <div class="ops__proftabs" id="ops-proftabs" role="group" aria-label="按职业筛选"></div>
+        <select class="ops__filter ops__filter--legacy" id="ops-prof" aria-label="按职业筛选">
+          <option value="">全部职业</option>
+          <option value="PIONEER">先锋</option><option value="WARRIOR">近卫</option>
+          <option value="SNIPER">狙击</option><option value="MEDIC">医疗</option>
+          <option value="CASTER">术师</option><option value="SPECIAL">特种</option>
+          <option value="TANK">重装</option><option value="SUPPORT">辅助</option>
+        </select>
+        <select class="ops__filter ops__filter--legacy" id="ops-subprof" aria-label="按子职业筛选">
+          <option value="">全部子职业</option>
+        </select>
+        <select class="ops__filter" id="ops-rarity" aria-label="按星级筛选">
+          <option value="0">全部星级</option>
+          <option value="6">★★★★★★</option><option value="5">★★★★★</option>
+          <option value="4">★★★★</option><option value="3">★★★</option>
+          <option value="2">★★</option><option value="1">★</option>
+        </select>
+        <select class="ops__filter" id="ops-module" aria-label="按模组筛选">
+          <option value="any">全部（模组）</option>
+          <option value="has">有模组</option>
+          <option value="none">无模组</option>
+        </select>
+        <label class="ops__only"><input type="checkbox" id="ops-only-edited" /> 只看已改过的</label>
+      </div>
     </div>
 
     <!-- 自定义干员表单挂在列表上方整行显示。
@@ -81,6 +97,16 @@
       <button type="button" class="ops__mini" data-revert-all="modules">只模组</button>
       <button type="button" class="ops__mini ops__revert-cancel" data-revert-all="cancel">取消</button>
     </div>
+
+    <!-- 子职业筛选：右侧滑出的竖排列表（官方干员页点职业图标后的样子） -->
+    <div class="ops__subpop" id="ops-subpop" hidden>
+      <div class="ops__subpop-head">
+        <b id="ops-subpop-title">子职业</b>
+        <button type="button" class="ops__subpop-close" id="ops-subpop-close" aria-label="关闭">×</button>
+      </div>
+      <div class="ops__subpop-body" id="ops-subpop-body"></div>
+    </div>
+    <div class="ops__submask" id="ops-submask" hidden></div>
 
     <div class="ops__layout">
       <ul class="ops__list" id="ops-list" role="listbox" aria-label="干员列表"></ul>

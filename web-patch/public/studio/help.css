@@ -1,8 +1,23 @@
 /* public/studio/help.css — 教程与帮助页（/studio/help.html）。
-   沿用主菜单那套深色终端底（menu.css / menu-layout.css），这里只排自己的部分：
-   左目录 + 右正文，手机上目录改为横向可滑的一排。 */
+ *
+ * 0.1.16 起统一到主界面那套「浅色扁平科技风」：浅灰白底、白色直角卡、青色强调、
+ * 细线分隔、几乎无阴影。配色全部取 /sandbox/light.css 的 --lt-* token，
+ * 本文件不再自带任何硬编码色号 —— 以后调色只改 light.css 一处。
+ *
+ * 硬规矩：
+ *   · 不写 rem。本项目 1rem 在手机横屏只有 33px，用 rem 写字号/控件会大得离谱。
+ *   · 样式表顺序是 …→ help.css → mobile-fit.css → responsive.css → panel-redesign.css
+ *     → light.css，所以基础尺寸在这里定，手机档交给 responsive.css 收，
+ *     这里只保留本页独有的部件（目录胶囊、正文分节）在窄屏下的排布。
+ */
 
 .help-screen { overflow: auto; }
+
+/* 修「往下滑一大块黑屏」：html 的底色在 light.css 里已经换掉了，
+   这里再给 document 一层，避免 body 高度不足时从缝里漏出 theme.css 的深色。 */
+html.help-doc,
+html.help-doc body,
+html.help-doc body.help-screen { background: var(--lt-bg); }
 
 .help {
   position: relative;
@@ -13,54 +28,93 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  color: var(--lt-ink);
 }
 
+/* ---- 抬头 ---------------------------------------------------------------- */
 .help__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-.help__head h1 { margin: 8px 0 6px; font-size: clamp(24px, 2.6vw, 38px); font-weight: 650; letter-spacing: .1em; }
-.help__head h1 span { color: #edb563; }
-.help__head p { margin: 0; max-width: 46em; color: #a0a69d; font-size: 13px; line-height: 1.8; }
-.help__back { color: #d0d2c7; text-decoration: none; font-size: 13px; letter-spacing: .04em; padding: 8px 14px; border: 1px solid #c4c2ac33; border-radius: 8px; white-space: nowrap; }
-.help__back:hover { color: #9aead7; border-color: #9aead766; }
+.help__head h1 {
+  margin: 8px 0 6px;
+  font-size: clamp(24px, 2.6vw, 38px);
+  font-weight: 650;
+  letter-spacing: .1em;
+  color: var(--lt-ink);
+}
+.help__head h1 span { color: var(--lt-gold); }
+.help__head p { margin: 0; max-width: 46em; color: var(--lt-ink-2); font-size: 13px; line-height: 1.8; }
+.help__back {
+  color: var(--lt-ink-2);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: .04em;
+  padding: 8px 14px;
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius);
+  background: var(--lt-tile);
+  white-space: nowrap;
+}
+.help__back:hover { color: var(--lt-cyan-deep); border-color: var(--lt-cyan); }
 
+/* ---- 目录：一排胶囊，选中态做成青色实底（和主界面强调块同一套） ------------- */
 .help__toc { display: flex; flex-wrap: wrap; gap: 8px; }
 .help__toc a {
-  padding: 6px 12px; border-radius: 999px; border: 1px solid #c4c2ac2a;
-  color: #b9c0bb; font-size: 12px; letter-spacing: .04em; text-decoration: none;
-  background: #141816cc;
+  padding: 6px 12px;
+  border-radius: var(--lt-radius);
+  border: 1px solid var(--lt-line);
+  color: var(--lt-ink-2);
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-decoration: none;
+  background: var(--lt-tile);
 }
-.help__toc a:hover { color: #9aead7; border-color: #9aead755; }
-.help__toc a.is-on { color: #0c1210; background: #4ed8af; border-color: #4ed8af; font-weight: 600; }
+.help__toc a:hover { color: var(--lt-cyan-deep); border-color: var(--lt-cyan); }
+.help__toc a.is-on {
+  color: #fff;
+  background: var(--lt-cyan);
+  border-color: var(--lt-cyan);
+  font-weight: 600;
+}
 
-.help__body { display: flex; flex-direction: column; gap: 18px; }
+/* ---- 正文分节：白卡 + 顶部 2px 青线（沿用主界面方块的「有顶边」语言） ------- */
+.help__body { display: flex; flex-direction: column; gap: 14px; }
 .help__sec {
-  border: 1px solid #c4c2ac22; border-radius: 10px;
-  background: #101413cc; padding: 16px 20px;
+  border: 1px solid var(--lt-line);
+  border-top: 2px solid var(--lt-cyan);
+  border-radius: var(--lt-radius);
+  background: var(--lt-tile);
+  padding: 16px 20px;
   scroll-margin-top: 20px;
 }
 .help__sec h2 {
-  margin: 0 0 6px; font-size: 17px; letter-spacing: .06em; color: #f2f2f2;
-  padding-bottom: 8px; border-bottom: 1px solid #c4c2ac18;
+  margin: 0 0 6px;
+  font-size: 17px;
+  letter-spacing: .06em;
+  color: var(--lt-ink);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--lt-line);
 }
-.help__intro { margin: 8px 0 10px; color: #a0a69d; font-size: 13px; line-height: 1.85; }
-.help__intro b { color: #ffc600; }
+.help__intro { margin: 8px 0 10px; color: var(--lt-ink-2); font-size: 13px; line-height: 1.85; }
+.help__intro b { color: var(--lt-gold); font-weight: 600; }
 .help__items { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
-.help__items > li { color: #c3cbc7; font-size: 13px; line-height: 1.85; }
-.help__items > li::marker { color: #4ed8af; }
-.help__items b { color: #ffc600; font-weight: 600; }
+.help__items > li { color: var(--lt-ink-2); font-size: 13px; line-height: 1.85; }
+.help__items > li::marker { color: var(--lt-cyan); }
+.help__items b { color: var(--lt-ink); font-weight: 600; }
 .help__items ul { margin: 6px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
-.help__items ul > li { color: #96a09b; font-size: 12px; line-height: 1.8; }
-.help__items ul > li::marker { color: #6f7a74; }
-.help__note { color: #6f7a74; font-size: 12px; }
-a.help-link { color: #9aead7; }
+.help__items ul > li { color: var(--lt-ink-3); font-size: 12px; line-height: 1.8; }
+.help__items ul > li::marker { color: var(--lt-line-2); }
+.help__note { color: var(--lt-ink-3); font-size: 12px; }
+a.help-link { color: var(--lt-cyan-deep); text-decoration: underline; text-underline-offset: 2px; }
 
-/* 手机上：目录变成横向可滑的一排，正文单列 */
+/* ---- 手机档：目录横向可滑，正文单列 --------------------------------------- */
 @media (max-height: 620px), (max-width: 720px) {
   .help { padding: calc(52px + var(--sa-t, 0px)) 14px calc(28px + var(--sa-b, 0px)); gap: 14px; }
   .help__head h1 { font-size: 22px; }
   .help__head p { font-size: 12px; }
-  .help__toc { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-  .help__toc a { flex: none; }
+  .help__toc { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scrollbar-width: none; }
+  .help__toc::-webkit-scrollbar { display: none; }
+  .help__toc a { flex: 0 0 auto; }
   .help__sec { padding: 12px 14px; }
   .help__sec h2 { font-size: 15px; }
   .help__items > li { font-size: 12.5px; }
+  .help__items ul > li { font-size: 11.5px; }
 }

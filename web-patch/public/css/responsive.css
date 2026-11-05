@@ -75,15 +75,21 @@
     --r-tap: 38px;
   }
 
-  /* --- B1. 主页：三主卡一屏放得下，不再逐张堆高 --- */
-  .menu-screen .menu__content {
+  /* --- B1. 主页：三主卡一屏放得下，不再逐张堆高 ---
+     注意选择器里的 `.menu-screen.menu-screen`：这是有意的重复类名，用来抬特异性。
+     menu-fit.css 的手机档写的是 `:root[data-menu-theme] body .menu-card__…`（0,3,2），
+     以前这里只写 `.menu-screen .menu-card__…`（0,2,1），整档规则全部被压掉、根本没生效，
+     所以手机上跑的一直是 menu-fit 的旧尺寸（标题 16px、插画数字 34px、脚注 13px），
+     看起来就是「怎么调都还是太大」。加 :root[data-menu-theme] body 前缀 + 重复一次
+     .menu-screen 后变成 0,10,x，才能真的盖住 menu-fit 与 interface-text.css。 */
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__content {
     justify-content: flex-start;
-    padding: 46px var(--r-pad) 14px;
+    padding: 38px var(--r-pad) 12px;
     min-height: 0;
     width: min(100%, 1360px);
     gap: 0;
   }
-  .menu-screen .menu__heading {
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__heading {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
@@ -92,62 +98,62 @@
     text-align: left;
     padding-right: 0;
   }
-  .menu-screen .menu__heading h1 { font-size: 21px; margin: 0; letter-spacing: .06em; }
-  .menu-screen .menu__heading p { font-size: 11px; }
-  .menu-screen .menu__eyebrow { width: 100%; font-size: 9.5px; letter-spacing: .14em; }
-  .menu-screen .menu__brand { display: none; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__heading h1 { font-size: 19px; margin: 0; letter-spacing: .06em; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__heading p { font-size: 10.5px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__eyebrow { width: 100%; font-size: 9px; letter-spacing: .14em; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__brand { display: none; }
 
-  .menu-screen .menu__primary {
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary {
     grid-template-columns: 1.1fr 1fr 1fr;
     gap: var(--r-gap);
     align-items: stretch;
   }
   /* menu-fit.css 的手机档把第 3 张设成 grid-column:1/-1（它按两列排）——
      这里是三列并排，必须把跨列重置掉，否则第三张独占一行、整块变两行。 */
-  .menu-screen .menu__primary > .menu-card:nth-child(n) { margin-top: 0; grid-column: auto; }
-  .menu-screen .menu__primary > .menu-card--hero { min-height: 0; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary > .menu-card:nth-child(n) { margin-top: 0; grid-column: auto; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary > .menu-card--hero { min-height: 0; }
 
-  .menu-screen .menu-card {
-    padding: 10px 12px 0;
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card {
+    padding: 8px 10px 0;
     clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
   }
-  .menu-screen .menu-card::after { top: 9px; right: 10px; width: 6px; height: 6px; }
-  .menu-screen .menu-card__top { font-size: 9.5px; padding-right: 14px; }
-  .menu-screen .menu-card__top > span { font-size: 9.5px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card::after { top: 9px; right: 10px; width: 6px; height: 6px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__top { font-size: 9px; padding-right: 14px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__top > span { font-size: 9px; }
   /* 插画区在横屏里是最占地方又最没信息量的一块：压成一条横带 */
-  .menu-screen .menu-card__art {
-    height: 44px;
-    margin: 6px 0;
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__art {
+    height: 36px;
+    margin: 5px 0;
     justify-content: flex-start;
   }
-  .menu-screen .menu-card__art b { font-size: 26px; letter-spacing: .04em; }
-  .menu-screen .menu-card__art::after { inset: 6px -10px 6px 30%; }
-  .menu-screen .menu-card__body { padding-bottom: 8px; gap: 3px; }
-  .menu-screen .menu-card__body strong { font-size: 15px; letter-spacing: .04em; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__art b { font-size: 23px; letter-spacing: .04em; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__art::after { inset: 6px -10px 6px 30%; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__body { padding-bottom: 8px; gap: 3px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__body strong { font-size: 14.5px; letter-spacing: .04em; }
   /* 说明正文在横屏里只留一行，多的让它自己省略 —— 想看完整描述进页面再看 */
-  .menu-screen .menu-card__body > span {
-    font-size: 11px;
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__body > span {
+    font-size: 10.5px;
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .menu-screen .menu-card__foot {
-    margin: auto -12px 0;
-    padding: 8px 12px;
-    font-size: 11.5px;
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__foot {
+    margin: auto -10px 0;
+    padding: 7px 10px;
+    font-size: 11px;
   }
-  .menu-screen .menu-card__foot b { font-size: 15px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__foot b { font-size: 14.5px; }
 
-  .menu-screen .menu__secondary { grid-template-columns: 1fr 1fr; gap: var(--r-gap); margin-top: var(--r-gap); }
-  .menu-screen .menu-mini { padding: 8px 12px; gap: 10px; }
-  .menu-screen .menu-mini svg { width: 18px; height: 18px; }
-  .menu-screen .menu-mini b { font-size: 12.5px; }
-  .menu-screen .menu-mini small { display: none; }
-  .menu-screen .menu-mini__arrow { font-size: 14px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__secondary { grid-template-columns: 1fr 1fr; gap: var(--r-gap); margin-top: var(--r-gap); }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini { padding: 7px 10px; gap: 8px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini svg { width: 18px; height: 18px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini b { font-size: 12px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini small { display: none; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini__arrow { font-size: 14px; }
 
-  .menu-screen .menu__footer { margin-top: 10px; padding-top: 8px; font-size: 9px; gap: 8px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__footer { margin-top: 8px; padding-top: 6px; font-size: 8.5px; gap: 8px; }
 
   /* --- B2. 顶栏（返回 / 主菜单 / 页签）：一行放下，不许折行 --- */
   .page__topbar {
@@ -265,18 +271,18 @@
 @media (orientation: portrait) and (max-width: 720px) {
   :root { --r-gap: 12px; --r-pad: 14px; }
 
-  .menu-screen .menu__content { padding: 58px var(--r-pad) 24px; justify-content: flex-start; min-height: 0; }
-  .menu-screen .menu__heading { text-align: left; margin-bottom: 14px; }
-  .menu-screen .menu__heading h1 { font-size: 26px; }
-  .menu-screen .menu__brand { display: none; }
-  .menu-screen .menu__primary { grid-template-columns: 1fr; gap: 10px; }
-  .menu-screen .menu__primary > .menu-card:nth-child(n) { margin-top: 0; min-height: 0; }
-  .menu-screen .menu-card__art { height: 72px; margin: 8px 0; }
-  .menu-screen .menu-card__body strong { font-size: 17px; }
-  .menu-screen .menu-card__body > span { font-size: 12px; }
-  .menu-screen .menu__secondary { grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
-  .menu-screen .menu-mini { padding: 10px 12px; }
-  .menu-screen .menu-mini small { display: block; font-size: 10.5px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__content { padding: 48px var(--r-pad) 20px; justify-content: flex-start; min-height: 0; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__heading { text-align: left; margin-bottom: 14px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__heading h1 { font-size: 23px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__brand { display: none; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary { grid-template-columns: 1fr; gap: 10px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary > .menu-card:nth-child(n) { margin-top: 0; min-height: 0; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__art { height: 60px; margin: 7px 0; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__body strong { font-size: 16px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__body > span { font-size: 11.5px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__secondary { grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini { padding: 10px 12px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-mini small { display: block; font-size: 10.5px; }
 
   .ops__layout { grid-template-columns: 1fr; gap: 10px; }
   .ops__list { max-height: 30dvh; }
@@ -297,11 +303,11 @@
 @media (min-width: 900px) and (pointer: coarse) {
   :root { --r-gap: 16px; --r-pad: 28px; --r-fs-title: 22px; }
 
-  .menu-screen .menu__content { width: min(100%, 1180px); padding: 72px 32px 36px; }
-  .menu-screen .menu__primary { gap: 18px; }
-  .menu-screen .menu__primary > .menu-card--hero { min-height: 360px; }
-  .menu-screen .menu-card__body strong { font-size: 21px; }
-  .menu-screen .menu-card__art { height: clamp(120px, 16vh, 170px); }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__content { width: min(100%, 1180px); padding: 72px 32px 36px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary { gap: 18px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__primary > .menu-card--hero { min-height: 360px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__body strong { font-size: 21px; }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu-card__art { height: clamp(120px, 16vh, 170px); }
 
   .ops, .help { width: min(100%, 1180px); }
   .saves { width: min(92vw, 900px); }
@@ -309,7 +315,7 @@
 
 /* ---- E. 大屏 / 桌面：内容居中，行宽别拉成一条线 ---------------------------------------- */
 @media (min-width: 1400px) and (pointer: fine) {
-  .menu-screen .menu__content { width: min(100%, 1180px); }
+  :root[data-menu-theme] body.menu-screen.menu-screen .menu__content { width: min(100%, 1180px); }
   .ops, .help { width: min(100%, 1240px); }
   .operation-level-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
 }

@@ -61,7 +61,25 @@ export function openSaveManager({ current, onLoad, onClose, onSaved, onNew, host
 
   dialog.addEventListener('click', async (e) => {
     const card = e.target.closest('[data-slot]');
-    if (card) { selected = Number(card.dataset.slot); message = ''; bad = false; render(); return; }
+    if (card) {
+      // 点存档卡就直接进入这一局：以前是「先选中、再点下面的载入按钮」，
+      // 手机上很容易以为点了没反应（用户反馈：只能新建，进不去已有存档）。
+      selected = Number(card.dataset.slot); message = ''; bad = false;
+      const picked = listSaveSlots()[selected];
+      if (picked && !picked.damaged) {
+        try {
+          await onLoad?.(picked.save, selected);
+          close();
+        } catch (err) {
+          message = (err && err.message) || '载入失败';
+          bad = true;
+          render();
+        }
+        return;
+      }
+      render();
+      return;
+    }
     const btn = e.target.closest('[data-save]');
     if (!btn || btn.disabled) return;
     const action = btn.dataset.save;
@@ -72,7 +90,7 @@ export function openSaveManager({ current, onLoad, onClose, onSaved, onNew, host
       slots = listSaveSlots();
       const slot = slots[selected];
       if (action === 'load') {
-        if (current && !window.confirm('载入此现场并暂停？当前未保存到槽位的修改将被替换。')) return;
+        // 不再弹 confirm：手机上 confirm 被拦时会表现为「点了没反应」
         if (!slot || slot.damaged) throw new Error('这个存档无法载入。');
         await onLoad?.(slot.save, selected);
         close();
